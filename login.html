@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flo — Sign In</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        brand: { 500: '#6366f1', 600: '#4f46e5' },
+                        surface: { 900: '#060818', 800: '#0d1117' }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        body { background: #060818; }
+        .orb {
+            position: fixed; border-radius: 50%;
+            filter: blur(80px); opacity: 0.12; pointer-events: none;
+            animation: float 8s ease-in-out infinite;
+        }
+        .orb-1 { width:500px;height:500px;background:radial-gradient(circle,#6366f1,transparent);top:-150px;left:-100px; }
+        .orb-2 { width:400px;height:400px;background:radial-gradient(circle,#ec4899,transparent);bottom:-100px;right:-100px;animation-delay:-4s; }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-15px)} }
+        .glass {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            backdrop-filter: blur(20px);
+        }
+        .form-input {
+            width:100%; padding:11px 14px;
+            background:rgba(255,255,255,0.05);
+            border:1px solid rgba(255,255,255,0.08);
+            border-radius:12px; color:#e2e8f0;
+            font-size:14px; font-family:inherit;
+            transition:all 0.2s; outline:none;
+        }
+        .form-input:focus {
+            border-color:rgba(99,102,241,0.5);
+            background:rgba(99,102,241,0.05);
+            box-shadow:0 0 0 3px rgba(99,102,241,0.1);
+        }
+        .form-input::placeholder { color:#334155; }
+        .btn-primary {
+            width:100%; padding:12px;
+            background:linear-gradient(135deg,#6366f1,#ec4899);
+            color:white; font-weight:700; font-size:14px;
+            border:none; border-radius:12px; cursor:pointer;
+            transition:all 0.2s;
+            box-shadow:0 4px 20px rgba(99,102,241,0.35);
+        }
+        .btn-primary:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(99,102,241,0.5); }
+        .btn-primary:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
+        .error-msg { color:#f87171; font-size:13px; margin-top:6px; display:none; }
+        .tab-btn { flex:1; padding:10px; border-radius:9px; font-size:13px; font-weight:600;
+                   cursor:pointer; border:none; background:transparent; color:#64748b; transition:all 0.2s; }
+        .tab-btn.active { background:rgba(99,102,241,0.2); color:#818cf8; border:1px solid rgba(99,102,241,0.3); }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center font-sans text-slate-100 relative overflow-hidden">
+
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <div class="glass rounded-3xl p-8 w-full max-w-md mx-4 relative z-10">
+
+        <!-- Logo -->
+        <div class="flex items-center gap-3 mb-8 justify-center">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-pink-500 flex items-center justify-center">
+                <i data-lucide="zap" class="w-5 h-5 text-white"></i>
+            </div>
+            <div>
+                <span class="text-2xl font-black" style="background:linear-gradient(135deg,#818cf8,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Flo</span>
+                <p class="text-xs text-slate-500 -mt-0.5">Finance Tracker</p>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex gap-2 p-1 bg-white/5 rounded-xl border border-white/07 mb-6">
+            <button class="tab-btn active" id="loginTab" onclick="switchTab('login')">Sign In</button>
+            <button class="tab-btn" id="registerTab" onclick="switchTab('register')">Create Account</button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Email</label>
+                    <input type="email" id="loginEmail" placeholder="you@example.com" class="form-input" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Password</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" class="form-input" required>
+                </div>
+                <p class="error-msg" id="loginError"></p>
+                <button type="submit" class="btn-primary mt-2" id="loginBtn">Sign In</button>
+            </div>
+        </form>
+
+        <!-- Register Form -->
+        <form id="registerForm" onsubmit="handleRegister(event)" style="display:none">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Full Name</label>
+                    <input type="text" id="regName" placeholder="Your name" class="form-input" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Email</label>
+                    <input type="email" id="regEmail" placeholder="you@example.com" class="form-input" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Password</label>
+                    <input type="password" id="regPassword" placeholder="Min 6 characters" class="form-input" required minlength="6">
+                </div>
+                <p class="error-msg" id="registerError"></p>
+                <button type="submit" class="btn-primary mt-2" id="registerBtn">Create Account</button>
+            </div>
+        </form>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        function switchTab(tab) {
+            document.getElementById('loginForm').style.display    = tab === 'login'    ? 'block' : 'none';
+            document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+            document.getElementById('loginTab').classList.toggle('active',    tab === 'login');
+            document.getElementById('registerTab').classList.toggle('active', tab === 'register');
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            const err = document.getElementById('loginError');
+            err.style.display = 'none';
+            btn.disabled = true;
+            btn.textContent = 'Signing in...';
+
+            try {
+                const res = await fetch('api/auth/login.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email:    document.getElementById('loginEmail').value,
+                        password: document.getElementById('loginPassword').value
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    window.location.href = 'index.html';
+                } else {
+                    err.textContent = data.error || 'Login failed';
+                    err.style.display = 'block';
+                }
+            } catch {
+                err.textContent = 'Network error. Is XAMPP running?';
+                err.style.display = 'block';
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Sign In';
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const btn = document.getElementById('registerBtn');
+            const err = document.getElementById('registerError');
+            err.style.display = 'none';
+            btn.disabled = true;
+            btn.textContent = 'Creating account...';
+
+            try {
+                const res = await fetch('api/auth/register.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name:     document.getElementById('regName').value,
+                        email:    document.getElementById('regEmail').value,
+                        password: document.getElementById('regPassword').value
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    window.location.href = 'index.html';
+                } else {
+                    err.textContent = data.error || 'Registration failed';
+                    err.style.display = 'block';
+                }
+            } catch {
+                err.textContent = 'Network error. Is XAMPP running?';
+                err.style.display = 'block';
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Create Account';
+        }
+    </script>
+</body>
+</html>

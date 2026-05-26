@@ -1,0 +1,7 @@
+# Database config (contains credentials)
+config/db.php
+
+# XAMPP / local environment
+*.log
+.DS_Store
+Thumbs.db
