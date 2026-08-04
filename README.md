@@ -8,6 +8,7 @@ A full-stack personal finance tracker built with vanilla JavaScript, PHP, and My
 - 📊 Analytics with charts (monthly trends, category breakdown, cumulative income vs. expenses)
 - 📅 Budget management per category per month
 - 🔍 Search & filter transactions
+- 🌗 Light & dark mode, saved per device
 
 ## Tech Stack
 - **Frontend:** HTML, CSS, Vanilla JavaScript, Chart.js, Tailwind CSS
@@ -49,5 +50,8 @@ A full-stack personal finance tracker built with vanilla JavaScript, PHP, and My
     └── setup.sql          # database schema
 ```
 
+## Author
+Built by [Mayank Dobhal](https://github.com/Mayank9897)
+
 ## License
-MIT
+[MIT](LICENSE) © 2026 Mayank Dobhal

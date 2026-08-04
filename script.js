@@ -33,6 +33,24 @@ let currentFilter = 'all';
 let charts        = {};
 let currentUser   = null;
 
+// ─── Theme ───────────────────────────────────────
+function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function toggleTheme() {
+    const html = document.documentElement;
+    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('flo-theme', next);
+    rerenderChartsForTheme();
+}
+
+function rerenderChartsForTheme() {
+    if (charts.monthly) loadCharts();
+    if (charts.incomeExpenses || charts.trend) loadAnalyticsCharts();
+}
+
 // ─── API Helper ──────────────────────────────────
 async function api(url, options = {}) {
     try {
@@ -134,8 +152,8 @@ function renderTransactionList(containerId, transactions, limit) {
     if (!list.length) {
         el.innerHTML = `
             <div class="empty-state">
-                <i data-lucide="inbox" class="w-12 h-12 text-slate-600 mx-auto mb-3"></i>
-                <p class="text-slate-500 text-sm">No transactions yet</p>
+                <i data-lucide="inbox" class="w-12 h-12 icon-muted mx-auto mb-3"></i>
+                <p class="text-subtle text-sm">No transactions yet</p>
             </div>`;
         lucide.createIcons();
         return;
@@ -283,14 +301,16 @@ function renderMonthlyChart(monthly) {
     const labels  = monthly.map(m => m.label);
     const income  = monthly.map(m => m.income);
     const expense = monthly.map(m => m.expense);
+    const incomeColor  = cssVar('--income');
+    const expenseColor = cssVar('--expense');
 
     charts.monthly = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labels.length ? labels : ['No Data'],
             datasets: [
-                { label: 'Income',   data: income,  backgroundColor: 'rgba(52,211,153,0.7)', borderColor: '#34d399', borderWidth: 0, borderRadius: 8, borderSkipped: false },
-                { label: 'Expenses', data: expense, backgroundColor: 'rgba(248,113,113,0.7)', borderColor: '#f87171', borderWidth: 0, borderRadius: 8, borderSkipped: false }
+                { label: 'Income',   data: income,  backgroundColor: incomeColor + 'b3', borderColor: incomeColor, borderWidth: 0, borderRadius: 8, borderSkipped: false },
+                { label: 'Expenses', data: expense, backgroundColor: expenseColor + 'b3', borderColor: expenseColor, borderWidth: 0, borderRadius: 8, borderSkipped: false }
             ]
         },
         options: chartOptions()
@@ -304,7 +324,8 @@ function renderCategoryChart(breakdown) {
 
     const labels  = breakdown.map(b => b.category);
     const data    = breakdown.map(b => b.total);
-    const palette = ['#6366f1','#ec4899','#f59e0b','#10b981','#ef4444','#8b5cf6','#06b6d4','#84cc16'];
+    const palette = ['#0f7a5c','#3f8f9e','#c98a2c','#5c8a4a','#b3492f','#6a6f8c','#2f8a99','#8a9c3f'];
+    const legendColor = cssVar('--text-secondary');
 
     charts.category = new Chart(ctx, {
         type: 'doughnut',
@@ -321,7 +342,7 @@ function renderCategoryChart(breakdown) {
         options: {
             responsive: true, maintainAspectRatio: false, cutout: '70%',
             plugins: {
-                legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 }, padding: 12, boxWidth: 10, boxHeight: 10 } }
+                legend: { position: 'bottom', labels: { color: legendColor, font: { size: 11 }, padding: 12, boxWidth: 10, boxHeight: 10 } }
             }
         }
     });
@@ -334,6 +355,9 @@ function renderIncomeExpensesChart(data) {
 
     const totalIncome  = data.monthly.reduce((s, m) => s + m.income,  0);
     const totalExpense = data.monthly.reduce((s, m) => s + m.expense, 0);
+    const incomeColor  = cssVar('--income');
+    const expenseColor = cssVar('--expense');
+    const legendColor  = cssVar('--text-secondary');
 
     charts.incomeExpenses = new Chart(ctx, {
         type: 'pie',
@@ -341,13 +365,13 @@ function renderIncomeExpensesChart(data) {
             labels: ['Income', 'Expenses'],
             datasets: [{
                 data: [totalIncome || 0, totalExpense || 0],
-                backgroundColor: ['rgba(52,211,153,0.8)', 'rgba(248,113,113,0.8)'],
-                borderColor: ['#34d399', '#f87171'],
+                backgroundColor: [incomeColor + 'cc', expenseColor + 'cc'],
+                borderColor: [incomeColor, expenseColor],
                 borderWidth: 2, hoverOffset: 10
             }]
         },
         options: { responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { labels: { color: '#94a3b8', font: { size: 12 }, padding: 16 } } }
+            plugins: { legend: { labels: { color: legendColor, font: { size: 12 }, padding: 16 } } }
         }
     });
 }
@@ -360,14 +384,16 @@ function renderTrendChart(trend) {
     const dates      = trend.map(t => new Date(t.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }));
     const incomeData = trend.map(t => t.cum_income);
     const expData    = trend.map(t => t.cum_expense);
+    const incomeColor  = cssVar('--income');
+    const expenseColor = cssVar('--expense');
 
     charts.trend = new Chart(ctx, {
         type: 'line',
         data: {
             labels: dates.length ? dates : ['No Data'],
             datasets: [
-                { label: 'Cumulative Income',   data: incomeData, borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,0.08)',  borderWidth: 2, fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: '#34d399' },
-                { label: 'Cumulative Expenses', data: expData,    borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.08)', borderWidth: 2, fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: '#f87171' }
+                { label: 'Cumulative Income',   data: incomeData, borderColor: incomeColor, backgroundColor: incomeColor + '14',  borderWidth: 2, fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: incomeColor },
+                { label: 'Cumulative Expenses', data: expData,    borderColor: expenseColor, backgroundColor: expenseColor + '14', borderWidth: 2, fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: expenseColor }
             ]
         },
         options: chartOptions()
@@ -375,15 +401,18 @@ function renderTrendChart(trend) {
 }
 
 function chartOptions() {
+    const textColor  = cssVar('--text-secondary');
+    const gridColor  = cssVar('--border');
+    const bgColor    = cssVar('--bg-elevated');
     return {
         responsive: true, maintainAspectRatio: false,
         plugins: {
-            legend: { labels: { color: '#94a3b8', font: { size: 12 }, padding: 16, boxWidth: 12, boxHeight: 12 } },
-            tooltip: { backgroundColor: 'rgba(13,17,23,0.95)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleColor: '#e2e8f0', bodyColor: '#94a3b8', padding: 12, cornerRadius: 10 }
+            legend: { labels: { color: textColor, font: { size: 12 }, padding: 16, boxWidth: 12, boxHeight: 12 } },
+            tooltip: { backgroundColor: bgColor, borderColor: gridColor, borderWidth: 1, titleColor: cssVar('--text-primary'), bodyColor: textColor, padding: 12, cornerRadius: 10 }
         },
         scales: {
-            y: { beginAtZero: true, ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { color: 'transparent' } },
-            x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { color: 'transparent' } }
+            y: { beginAtZero: true, ticks: { color: textColor, font: { size: 11 } }, grid: { color: gridColor }, border: { color: 'transparent' } },
+            x: { ticks: { color: textColor, font: { size: 11 } }, grid: { color: gridColor }, border: { color: 'transparent' } }
         }
     };
 }
@@ -394,7 +423,7 @@ function renderCategoryBreakdown(breakdown) {
     if (!grid) return;
 
     if (!breakdown || !breakdown.length) {
-        grid.innerHTML = `<div class="empty-state col-span-full"><p class="text-slate-500 text-sm">Add expenses to see breakdown</p></div>`;
+        grid.innerHTML = `<div class="empty-state col-span-full"><p class="text-subtle text-sm">Add expenses to see breakdown</p></div>`;
         return;
     }
 
@@ -403,8 +432,8 @@ function renderCategoryBreakdown(breakdown) {
         return `
             <div class="cat-card">
                 <div class="text-2xl mb-2">${emoji}</div>
-                <div class="text-xs font-semibold text-slate-400 mb-1">${escHtml(b.category)}</div>
-                <div class="text-sm font-bold text-slate-200 font-mono">₹${parseFloat(b.total).toFixed(0)}</div>
+                <div class="text-xs font-semibold text-subtle mb-1">${escHtml(b.category)}</div>
+                <div class="text-sm font-bold text-heading font-mono">₹${parseFloat(b.total).toFixed(0)}</div>
             </div>`;
     }).join('');
 }
@@ -432,32 +461,31 @@ function renderBudgetCards(budgets, month) {
         const spent   = parseFloat(b.spent || 0);
         const limit   = parseFloat(b.limit || 0);
 
-        let barColor = 'linear-gradient(90deg,#6366f1,#818cf8)';
-        let pctColor = 'text-brand-400';
-        if (percent >= 90) { barColor = 'linear-gradient(90deg,#ef4444,#f87171)'; pctColor = 'text-rose-400'; }
-        else if (percent >= 70) { barColor = 'linear-gradient(90deg,#f59e0b,#fbbf24)'; pctColor = 'text-amber-400'; }
-        else if (percent >= 1) { barColor = 'linear-gradient(90deg,#10b981,#34d399)'; pctColor = 'text-emerald-400'; }
+        let barColor = 'var(--accent)';
+        if (percent >= 90) barColor = 'var(--expense)';
+        else if (percent >= 70) barColor = '#c98a2c';
+        else if (percent >= 1) barColor = 'var(--income)';
 
         return `
             <div class="budget-card">
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center gap-2">
                         <span class="text-xl">${emoji}</span>
-                        <span class="text-sm font-semibold text-slate-300">${cat}</span>
+                        <span class="text-sm font-semibold text-body">${cat}</span>
                     </div>
-                    <span class="text-xs font-mono font-bold ${pctColor}">${percent}%</span>
+                    <span class="text-xs font-mono font-bold" style="color:${barColor}">${percent}%</span>
                 </div>
                 <div class="budget-bar-track">
                     <div class="budget-bar-fill" style="width:${percent}%; background:${barColor}"></div>
                 </div>
                 <div class="flex items-center justify-between mt-2">
-                    <p class="text-xs text-slate-500 font-mono">₹${spent.toFixed(0)} / ₹${limit > 0 ? limit.toFixed(0) : '—'}</p>
+                    <p class="text-xs text-subtle font-mono">₹${spent.toFixed(0)} / ₹${limit > 0 ? limit.toFixed(0) : '—'}</p>
                     <button onclick="openSetBudget('${cat}', ${limit}, '${month}')"
-                        class="text-xs text-brand-400 hover:text-brand-300 transition-colors font-semibold">
+                        class="text-xs text-accent hover:opacity-75 transition-opacity font-semibold">
                         ${limit > 0 ? 'Edit' : 'Set limit'}
                     </button>
                 </div>
-                ${b.over ? '<p class="text-xs text-rose-400 mt-1 font-semibold">⚠️ Over budget!</p>' : ''}
+                ${b.over ? '<p class="text-xs mt-1 font-semibold" style="color:var(--expense)">⚠️ Over budget!</p>' : ''}
             </div>`;
     }).join('');
 
@@ -597,7 +625,7 @@ function showPageLoader(show) {
         loader.id = 'pageLoader';
         loader.style.cssText = `
             position:fixed;top:0;left:0;right:0;height:2px;
-            background:linear-gradient(90deg,#6366f1,#ec4899);
+            background:${cssVar('--accent')};
             z-index:9999;transition:opacity 0.3s;
             animation:shimmerBar 1s linear infinite;`;
         document.head.insertAdjacentHTML('beforeend',
@@ -612,7 +640,7 @@ function showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
     const toast     = document.createElement('div');
     const icon      = type === 'success' ? 'check-circle' : 'x-circle';
-    const color     = type === 'success' ? '#34d399' : '#f87171';
+    const color     = type === 'success' ? cssVar('--income') : cssVar('--expense');
 
     toast.className = `toast ${type}`;
     toast.innerHTML = `
