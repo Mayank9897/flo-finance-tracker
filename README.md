@@ -1,18 +1,27 @@
 # Flo — Finance Tracker 💸
 
-A full-stack personal finance tracker built with vanilla JavaScript, PHP, and MySQL.
+A full-stack personal finance tracker built with vanilla JavaScript, PHP, and MySQL. Track income and expenses, visualize spending by category, set monthly budgets, and see trends over time.
 
 ## Features
-- 🔐 User authentication (register/login)
+- 🔐 User authentication (register/login) with session-based auth
 - 💰 Track income & expenses by category
-- 📊 Analytics with charts (monthly trends, category breakdown)
+- 📊 Analytics with charts (monthly trends, category breakdown, cumulative income vs. expenses)
 - 📅 Budget management per category per month
 - 🔍 Search & filter transactions
 
 ## Tech Stack
 - **Frontend:** HTML, CSS, Vanilla JavaScript, Chart.js, Tailwind CSS
-- **Backend:** PHP
+- **Backend:** PHP (session-based auth, REST-style JSON endpoints)
 - **Database:** MySQL
+
+## Screenshots
+
+| Login | Dashboard |
+|---|---|
+| ![Login screen](screenshots/login.png) | ![Dashboard](screenshots/dashboard.png) |
+
+**Analytics**
+![Analytics](screenshots/analytics.png)
 
 ## Setup (Local)
 
@@ -22,8 +31,23 @@ A full-stack personal finance tracker built with vanilla JavaScript, PHP, and My
 4. Import `config/setup.sql` in phpMyAdmin to create the database & tables
 5. Open `http://localhost/expense-tracker/login.html`
 
-## Screenshots
-> Coming soon
+## Project Structure
+
+```
+├── index.html          # Dashboard (transactions, analytics, budgets)
+├── login.html           # Sign in / create account
+├── script.js             # Frontend logic + API calls
+├── style.css             # Styling
+├── api/
+│   ├── auth/              # register, login, logout, session check
+│   ├── transactions/    # add, get, delete
+│   ├── analytics/        # monthly trends, summary
+│   └── budget/            # get, save
+└── config/
+    ├── db.example.php  # DB credentials template
+    ├── auth.php           # session helper + CORS
+    └── setup.sql          # database schema
+```
 
 ## License
 MIT
