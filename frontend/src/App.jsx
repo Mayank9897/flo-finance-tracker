@@ -1,54 +1,1163 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ArrowDownLeft, ArrowUpRight, Bell, ChevronDown, CircleHelp, CreditCard, LayoutDashboard, LogOut, Menu, MoreHorizontal, Plus, Receipt, Search, Settings, Sparkles, Target, TrendingUp, Wallet, X } from 'lucide-react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { financeApi } from './services/api'
 
-const categories = ['Housing', 'Food & Dining', 'Groceries', 'Transport', 'Entertainment', 'Subscriptions', 'Salary', 'Other']
-const months = ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug']
-const colors = { Housing: 'blue', 'Food & Dining': 'orange', Groceries: 'green', Transport: 'purple', Entertainment: 'blue', Subscriptions: 'purple', Salary: 'green', Other: 'orange' }
-const icons = { Housing: 'H', 'Food & Dining': 'F', Groceries: 'G', Transport: 'T', Entertainment: 'E', Subscriptions: 'S', Salary: 'A', Other: 'O' }
-const money = value => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value)
-const shortDate = value => new Date(`${value}T12:00:00`).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
+// ─── Constants ───────────────────────────────────────────────────────────────
 
-function App() {
-  const [state, setState] = useState(() => financeApi.getState())
-  const [signedIn, setSignedIn] = useState(() => financeApi.getSession())
-  const [activeTab, setActiveTab] = useState('Overview')
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [modal, setModal] = useState(null)
-  const [search, setSearch] = useState('')
-  const [typeFilter, setTypeFilter] = useState('all')
-  const refresh = async () => setState(await financeApi.loadState())
-  const changeTab = tab => { setActiveTab(tab); setMobileOpen(false) }
-  useEffect(() => { if (signedIn) refresh() }, [signedIn])
-  if (!signedIn) return <AuthScreen onLogin={async (email, password) => { if (!password) return; try { await financeApi.login(email, password); setSignedIn(true) } catch (error) { window.alert(error.message) } }} onRegister={async (name, email, password) => { if (!password) return; try { await financeApi.register(name, email, password); setSignedIn(true) } catch (error) { window.alert(error.message) } }} />
-  const currentMonth = state.transactions.filter(item => item.date.startsWith('2026-08'))
-  const income = currentMonth.filter(item => item.type === 'income').reduce((sum, item) => sum + item.amount, 0)
-  const expenses = currentMonth.filter(item => item.type === 'expense').reduce((sum, item) => sum + item.amount, 0)
-  const balance = 24580.2 + income - expenses
-  const visible = state.transactions.filter(item => (typeFilter === 'all' || item.type === typeFilter) && `${item.merchant} ${item.category}`.toLowerCase().includes(search.toLowerCase()))
-  const remove = async id => { await financeApi.deleteTransaction(id); refresh() }
-  return <div className="app-shell"><Sidebar activeTab={activeTab} changeTab={changeTab} mobileOpen={mobileOpen} onLogout={() => { financeApi.logout(); setSignedIn(false) }} />{mobileOpen && <button className="scrim" onClick={() => setMobileOpen(false)} aria-label="Close navigation" />}<main className="main-content"><Topbar activeTab={activeTab} onMenu={() => setMobileOpen(true)} /><div className="page-body"><section className="page-heading"><div><p className="eyebrow">Tuesday, August 25, 2026</p><h1>Good morning, {state.user.name.split(' ')[0]} <span>✦</span></h1><p className="muted">Here is what's happening with your money this month.</p></div><button className="primary-button" onClick={() => setModal('transaction')}><Plus size={17} /> Add transaction</button></section><div className="tabs">{['Overview', 'Transactions', 'Budgets'].map(tab => <button key={tab} className={activeTab === tab ? 'tab active' : 'tab'} onClick={() => changeTab(tab)}>{tab}</button>)}</div>{activeTab === 'Overview' && <Overview income={income} expenses={expenses} balance={balance} budgets={state.budgets} transactions={visible.slice(0, 4)} onDelete={remove} />}{activeTab === 'Transactions' && <Transactions transactions={visible} search={search} setSearch={setSearch} typeFilter={typeFilter} setTypeFilter={setTypeFilter} onDelete={remove} />}{activeTab === 'Budgets' && <Budgets budgets={state.budgets} transactions={currentMonth} onAdd={() => setModal('budget')} />}{activeTab === 'Analytics' && <Analytics income={income} expenses={expenses} transactions={state.transactions} />}{['Accounts', 'Settings'].includes(activeTab) && <EmptyView title={activeTab} />}</div></main>{modal === 'transaction' && <TransactionModal onClose={() => setModal(null)} onSave={async item => { await financeApi.addTransaction(item); await refresh(); setModal(null) }} />}{modal === 'budget' && <BudgetModal onClose={() => setModal(null)} onSave={async item => { await financeApi.saveBudget(item); await refresh(); setModal(null) }} />}</div>
+const CATEGORIES = [
+  'Housing', 'Food & Dining', 'Groceries', 'Transport',
+  'Entertainment', 'Subscriptions', 'Salary', 'Other',
+]
+
+const CATEGORY_ICONS = {
+  Housing:         'home',
+  'Food & Dining': 'restaurant',
+  Groceries:       'shopping_cart',
+  Transport:       'directions_car',
+  Entertainment:   'movie',
+  Subscriptions:   'subscriptions',
+  Salary:          'payments',
+  Other:           'category',
 }
 
-function Sidebar({ activeTab, changeTab, mobileOpen, onLogout }) { const items = [['Overview', <LayoutDashboard size={17} />], ['Transactions', <Receipt size={17} />], ['Budgets', <Target size={17} />], ['Analytics', <TrendingUp size={17} />]]; return <aside className={`sidebar ${mobileOpen ? 'is-open' : ''}`}><div className="brand"><span className="brand-mark"><Sparkles size={16} /></span><span>flo</span></div><div className="workspace"><div className="workspace-avatar">M</div><div><strong>Mayank's space</strong><small>Personal account</small></div><ChevronDown size={15} /></div><nav><p className="nav-label">Workspace</p>{items.map(([name, icon]) => <button key={name} className={`nav-item ${activeTab === name ? 'active' : ''}`} onClick={() => changeTab(name)}>{icon}<span>{name}</span></button>)}<p className="nav-label second">Manage</p><button className={`nav-item ${activeTab === 'Accounts' ? 'active' : ''}`} onClick={() => changeTab('Accounts')}><CreditCard size={17} /><span>Accounts</span></button><button className={`nav-item ${activeTab === 'Settings' ? 'active' : ''}`} onClick={() => changeTab('Settings')}><Settings size={17} /><span>Settings</span></button></nav><div className="sidebar-bottom"><div className="help-box"><CircleHelp size={17} /><span><strong>Need a hand?</strong><small>Visit our help center</small></span></div><div className="user-row"><div className="user-avatar">M</div><div><strong>Mayank Dobhal</strong><small>mayank@gmail.com</small></div><button className="more-button" onClick={onLogout} aria-label="Log out"><LogOut size={16} /></button></div></div></aside> }
-function Topbar({ activeTab, onMenu }) { return <header className="topbar"><button className="menu-button" onClick={onMenu} aria-label="Open menu"><Menu size={21} /></button><div className="breadcrumb"><span>Workspace</span><span>/</span><strong>{activeTab}</strong></div><div className="top-actions"><button className="icon-button" aria-label="Notifications"><Bell size={18} /><i /></button><div className="date-select">August 2026 <ChevronDown size={15} /></div><button className="avatar-small">M</button></div></header> }
-function Overview({ income, expenses, balance, budgets, transactions, onDelete }) { return <><section className="stats-grid"><StatCard title="Total balance" amount={money(balance)} change="+12.8%" icon={<Wallet size={18} />} tone="sage" /><StatCard title="Income this month" amount={money(income)} change="+8.2%" icon={<ArrowDownLeft size={18} />} tone="blue" /><StatCard title="Spent this month" amount={money(expenses)} change="-4.5%" icon={<ArrowUpRight size={18} />} tone="orange" /><StatCard title="Savings rate" amount={`${income ? Math.round(((income - expenses) / income) * 100) : 0}%`} change="+3.1%" icon={<TrendingUp size={18} />} tone="purple" /></section><section className="content-grid"><CashFlow /><BudgetPanel budgets={budgets} transactions={transactions} /></section><TransactionPanel transactions={transactions} onDelete={onDelete} /></> }
-function CashFlow() { return <div className="panel chart-panel"><PanelHeader title="Cash flow" action="Last 12 months" /><div className="chart-legend"><span><i className="legend-income" />Income</span><span><i className="legend-expense" />Expenses</span></div><div className="chart"><div className="y-axis"><span>₹10k</span><span>₹7.5k</span><span>₹5k</span><span>₹2.5k</span><span>₹0</span></div><div className="bars">{[42, 57, 48, 70, 61, 82, 67, 76, 89, 72, 94, 84].map((height, i) => <div className="bar-group" key={months[i]}><div className="bar income" style={{ height: `${height}%` }} /><div className="bar expense" style={{ height: `${Math.max(22, height - 35)}%` }} /><small>{months[i]}</small></div>)}</div></div></div> }
-function BudgetPanel({ budgets, transactions }) { return <div className="panel budget-panel"><PanelHeader title="Budget overview" action="View all" />{budgets.slice(0, 4).map(budget => <BudgetRow key={budget.id} budget={budget} transactions={transactions} />)}</div> }
-function BudgetRow({ budget, transactions }) { const spent = transactions.filter(item => item.category === budget.category).reduce((sum, item) => sum + item.amount, 0); return <div className="budget-row"><div><span>{budget.category}</span><strong>{money(spent)} of {money(budget.limit_amount)}</strong></div><div className="progress-track"><i className={colors[budget.category] || 'green'} style={{ width: `${Math.min(100, spent / budget.limit_amount * 100)}%` }} /></div></div> }
-function TransactionPanel({ transactions, onDelete }) { return <section className="panel transactions-panel"><PanelHeader title="Recent transactions" action="View all transactions" /><div className="transaction-list">{transactions.length ? transactions.map(item => <TransactionRow key={item.id} item={item} onDelete={onDelete} />) : <p className="empty-state">No transactions yet.</p>}</div></section> }
-function TransactionRow({ item, onDelete }) { return <div className="transaction"><div className={`merchant-icon ${colors[item.category] || 'green'}`}>{icons[item.category] || item.merchant[0]}</div><div className="transaction-info"><strong>{item.merchant}</strong><span>{item.category} <em>·</em> {shortDate(item.date)}</span></div><strong className={item.type === 'income' ? 'positive amount' : 'amount'}>{item.type === 'income' ? '+' : '-'}{money(item.amount)}</strong><button className="more-button" onClick={() => onDelete(item.id)} aria-label={`Delete ${item.merchant}`}><MoreHorizontal size={18} /></button></div> }
-function Transactions({ transactions, search, setSearch, typeFilter, setTypeFilter, onDelete }) { return <section className="panel transactions-panel full-panel"><PanelHeader title="Transactions" action={`${transactions.length} entries`} /><div className="transaction-toolbar"><div className="search-field"><Search size={16} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search transactions" /></div><select className="filter-button" value={typeFilter} onChange={event => setTypeFilter(event.target.value)}><option value="all">All types</option><option value="income">Income</option><option value="expense">Expenses</option></select></div><div className="transaction-list">{transactions.map(item => <TransactionRow key={item.id} item={item} onDelete={onDelete} />)}</div></section> }
-function Budgets({ budgets, transactions, onAdd }) { return <section className="panel full-panel"><div className="panel-header"><div><h2>Monthly budgets</h2><p className="muted">Keep your spending aligned with your goals.</p></div><button className="primary-button" onClick={onAdd}><Plus size={16} /> Add budget</button></div><div className="budget-list">{budgets.map(budget => <BudgetRow key={budget.id} budget={budget} transactions={transactions} />)}</div></section> }
-function Analytics({ income, expenses, transactions }) { const byCategory = useMemo(() => transactions.filter(item => item.type === 'expense').reduce((result, item) => ({ ...result, [item.category]: (result[item.category] || 0) + item.amount }), {}), [transactions]); return <section className="analytics-grid"><div className="panel analytics-callout"><p className="eyebrow">Financial health</p><h2>{income > expenses ? 'You are on track.' : 'Time to review spending.'}</h2><p className="muted">Your income is {money(Math.abs(income - expenses))} {income > expenses ? 'higher' : 'lower'} than expenses this month.</p></div><div className="panel"><PanelHeader title="Spending by category" action="August" />{Object.entries(byCategory).map(([category, value]) => <div className="analytics-row" key={category}><span>{category}</span><strong>{money(value)}</strong><div className="progress-track"><i className={colors[category] || 'green'} style={{ width: `${Math.min(100, value / expenses * 100)}%` }} /></div></div>)}</div></section> }
-function EmptyView({ title }) { return <section className="panel empty-view"><Settings size={30} /><h2>{title}</h2><p className="muted">This workspace is ready for your account details.</p></section> }
-function StatCard({ title, amount, change, icon, tone }) { return <div className="stat-card"><div className={`stat-icon ${tone}`}>{icon}</div><span className="stat-title">{title}</span><strong className="stat-amount">{amount}</strong><span className="stat-change">{change} <small>vs last month</small></span></div> }
-function PanelHeader({ title, action }) { return <div className="panel-header"><h2>{title}</h2><button className="text-button">{action} <ChevronDown size={14} /></button></div> }
-function AuthScreen({ onLogin, onRegister }) { const [register, setRegister] = useState(false); const [name, setName] = useState(''); const [email, setEmail] = useState('mayank@gmail.com'); const [password, setPassword] = useState('demo'); return <div className="auth-screen"><div className="auth-brand"><span className="brand-mark"><Sparkles size={16} /></span><b>flo</b></div><div className="auth-card"><p className="eyebrow">Personal finance, made clear</p><h1>{register ? 'Create your account' : 'Welcome back'}</h1><p className="muted">{register ? 'Start building a calmer money routine.' : 'Sign in to continue to your workspace.'}</p>{register && <FormInput label="Name" value={name} onChange={setName} placeholder="Mayank Dobhal" />}<FormInput label="Email" value={email} onChange={setEmail} type="email" /><FormInput label="Password" value={password} onChange={setPassword} type="password" /><button className="primary-button auth-submit" onClick={() => register ? onRegister(name, email, password) : onLogin(email, password)}>{register ? 'Create account' : 'Sign in'} <ArrowUpRight size={15} /></button><button className="auth-switch" onClick={() => setRegister(!register)}>{register ? 'Already have an account? Sign in' : 'New to flo? Create an account'}</button>{!register && <small className="demo-hint">Demo account: mayank@gmail.com</small>}</div></div> }
-function TransactionModal({ onClose, onSave }) { const [form, setForm] = useState({ merchant: '', category: 'Food & Dining', amount: '', type: 'expense', date: '2026-08-25' }); return <Modal title="Add transaction" onClose={onClose}><FormInput label="Merchant" value={form.merchant} onChange={value => setForm({ ...form, merchant: value })} placeholder="e.g. Coffee shop" /><FormInput label="Amount" value={form.amount} onChange={value => setForm({ ...form, amount: value })} type="number" placeholder="0.00" /><div className="form-grid"><FormSelect label="Type" value={form.type} onChange={value => setForm({ ...form, type: value })} options={['expense', 'income']} /><FormSelect label="Category" value={form.category} onChange={value => setForm({ ...form, category: value })} options={categories} /></div><FormInput label="Date" value={form.date} onChange={value => setForm({ ...form, date: value })} type="date" /><ModalActions onClose={onClose} onSave={() => form.merchant && Number(form.amount) > 0 && onSave(form)} /></Modal> }
-function BudgetModal({ onClose, onSave }) { const [form, setForm] = useState({ category: 'Food & Dining', limit_amount: '' }); return <Modal title="Add budget" onClose={onClose}><FormSelect label="Category" value={form.category} onChange={value => setForm({ ...form, category: value })} options={categories.filter(category => category !== 'Salary')} /><FormInput label="Monthly limit" value={form.limit_amount} onChange={value => setForm({ ...form, limit_amount: value })} type="number" placeholder="0.00" /><ModalActions onClose={onClose} onSave={() => Number(form.limit_amount) > 0 && onSave(form)} /></Modal> }
-function Modal({ title, onClose, children }) { return <div className="modal-backdrop" onClick={onClose}><div className="modal" onClick={event => event.stopPropagation()}><div className="modal-heading"><div><p className="eyebrow">New entry</p><h2>{title}</h2></div><button className="icon-button" onClick={onClose} aria-label="Close"><X size={18} /></button></div>{children}</div></div> }
-function FormInput({ label, value, onChange, ...props }) { return <label>{label}<input value={value} onChange={event => onChange(event.target.value)} {...props} /></label> }
-function FormSelect({ label, value, onChange, options }) { return <label>{label}<select value={value} onChange={event => onChange(event.target.value)}>{options.map(option => <option key={option}>{option}</option>)}</select></label> }
-function ModalActions({ onClose, onSave }) { return <div className="modal-actions"><button className="secondary-button" onClick={onClose}>Cancel</button><button className="primary-button" onClick={onSave}>Save</button></div> }
-export default App
+const TODAY = new Date()
+const CURRENT_MONTH = `${TODAY.getFullYear()}-${String(TODAY.getMonth() + 1).padStart(2, '0')}`
+const GREETING = (() => {
+  const h = TODAY.getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
+})()
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const fmt = (v) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(v)
+
+const fmtDate = (v) => {
+  try {
+    return new Date(`${v}T12:00:00`).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+    })
+  } catch { return v }
+}
+
+const getInitial = (str) => (str || '?').charAt(0).toUpperCase()
+
+const getBudgetStatus = (pct) => {
+  if (pct >= 100) return { label: 'Over Budget', cls: 'over',     fill: 'over'    }
+  if (pct >= 80)  return { label: 'Warning',     cls: 'warning',  fill: 'warning' }
+  return               { label: 'On Track',      cls: 'on-track', fill: 'safe'    }
+}
+
+// ─── Material Symbol Icon ─────────────────────────────────────────────────────
+function Icon({ name, style, className = '' }) {
+  return (
+    <span
+      className={`material-symbols-outlined${className ? ' ' + className : ''}`}
+      style={style}
+      aria-hidden="true"
+    >
+      {name}
+    </span>
+  )
+}
+
+// ─── Theme hook ──────────────────────────────────────────────────────────────
+function useTheme() {
+  const [dark, setDark] = useState(() => {
+    try { return localStorage.getItem('flo-theme') === 'dark' } catch { return false }
+  })
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark)
+    try { localStorage.setItem('flo-theme', dark ? 'dark' : 'light') } catch {}
+  }, [dark])
+
+  return [dark, () => setDark(d => !d)]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  ROOT APP
+// ─────────────────────────────────────────────────────────────────────────────
+export default function App() {
+  const [dark, toggleTheme] = useTheme()
+  const [appState, setAppState] = useState(() => financeApi.getState())
+  const [authed, setAuthed]     = useState(() => financeApi.getSession())
+  const [tab, setTab]           = useState('dashboard')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [txModal, setTxModal]         = useState(false)
+  const [budgetModal, setBudgetModal] = useState(false)
+  const [search, setSearch]           = useState('')
+  const [typeFilter, setTypeFilter]   = useState('all')
+
+  const refresh = useCallback(async () => {
+    setAppState(await financeApi.loadState())
+  }, [])
+
+  useEffect(() => {
+    if (authed) refresh()
+  }, [authed, refresh])
+
+  const goTab = (t) => { setTab(t); setSidebarOpen(false) }
+
+  // ── Not authenticated → show auth screen ────────────────────────────────
+  if (!authed) {
+    return (
+      <AuthScreen
+        dark={dark}
+        toggleTheme={toggleTheme}
+        onLogin={async (email, password) => {
+          try { await financeApi.login(email, password); setAuthed(true); return null }
+          catch (err) { return err.message }
+        }}
+        onRegister={async (name, email, password) => {
+          try { await financeApi.register(name, email, password); setAuthed(true); return null }
+          catch (err) { return err.message }
+        }}
+      />
+    )
+  }
+
+  // ── Derived data ─────────────────────────────────────────────────────────
+  const currentMonth = appState.transactions.filter(t => t.date.startsWith(CURRENT_MONTH))
+  const income   = currentMonth.filter(t => t.type === 'income').reduce((s, t)  => s + t.amount, 0)
+  const expenses = currentMonth.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
+  const savings  = income - expenses
+  const balance  = 24580.20 + income - expenses
+
+  const filteredTx = appState.transactions.filter(t =>
+    (typeFilter === 'all' || t.type === typeFilter) &&
+    `${t.merchant} ${t.category}`.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const handleDeleteTx = async (id) => { await financeApi.deleteTransaction(id); refresh() }
+  const handleAddTx    = async (item) => { await financeApi.addTransaction(item); await refresh(); setTxModal(false) }
+  const handleAddBudget = async (item) => { await financeApi.saveBudget(item); await refresh(); setBudgetModal(false) }
+
+  return (
+    <div className="flo-app">
+
+      {/* ── Sidebar ── */}
+      <Sidebar
+        tab={tab}
+        goTab={goTab}
+        isOpen={sidebarOpen}
+        dark={dark}
+        toggleTheme={toggleTheme}
+        user={appState.user}
+        onAddTx={() => setTxModal(true)}
+        onLogout={() => { financeApi.logout(); setAuthed(false) }}
+      />
+
+      {/* Scrim (mobile) */}
+      {sidebarOpen && (
+        <button
+          className="flo-scrim"
+          onClick={() => setSidebarOpen(false)}
+          aria-label="Close navigation"
+        />
+      )}
+
+      {/* ── Mobile header ── */}
+      <header className="flo-mobile-header">
+        <button className="flo-icon-btn" onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
+          <Icon name="menu" />
+        </button>
+        <div className="flo-mobile-brand">
+          <div style={{ width: 26, height: 26, background: 'var(--color-primary)', color: 'var(--color-on-primary)', display: 'grid', placeItems: 'center', fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 14 }}>F</div>
+          Flo Finance
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button className="flo-icon-btn" onClick={toggleTheme} aria-label="Toggle theme">
+            <Icon name={dark ? 'light_mode' : 'dark_mode'} />
+          </button>
+          <button className="flo-btn-primary" onClick={() => setTxModal(true)} style={{ padding: '6px 10px' }}>
+            <Icon name="add" style={{ fontSize: 18 }} />
+          </button>
+        </div>
+      </header>
+
+      {/* ── Main content ── */}
+      <main className="flo-main">
+        <div className="flo-grid-bg" style={{ position: 'absolute', inset: 0, opacity: 0.3, pointerEvents: 'none', zIndex: 0 }} />
+        <div className="flo-main-inner" style={{ position: 'relative', zIndex: 1 }}>
+
+          {tab === 'dashboard' && (
+            <DashboardPage
+              user={appState.user}
+              income={income}
+              expenses={expenses}
+              savings={savings}
+              balance={balance}
+              budgets={appState.budgets}
+              transactions={appState.transactions}
+              currentMonth={currentMonth}
+              onAddTx={() => setTxModal(true)}
+              onDelete={handleDeleteTx}
+              goTab={goTab}
+            />
+          )}
+
+          {tab === 'transactions' && (
+            <TransactionsPage
+              transactions={filteredTx}
+              search={search}
+              setSearch={setSearch}
+              typeFilter={typeFilter}
+              setTypeFilter={setTypeFilter}
+              onAddTx={() => setTxModal(true)}
+              onDelete={handleDeleteTx}
+            />
+          )}
+
+          {tab === 'budgets' && (
+            <BudgetsPage
+              budgets={appState.budgets}
+              transactions={currentMonth}
+              onAdd={() => setBudgetModal(true)}
+            />
+          )}
+
+          {tab === 'analytics' && (
+            <AnalyticsPage
+              income={income}
+              expenses={expenses}
+              transactions={appState.transactions}
+            />
+          )}
+
+        </div>
+      </main>
+
+      {/* ── Mobile bottom nav ── */}
+      <nav className="flo-mobile-nav" aria-label="Main navigation">
+        <div className="flo-mobile-nav-inner">
+          {[
+            ['dashboard',    'dashboard',              'Dashboard'],
+            ['transactions', 'receipt_long',           'Transactions'],
+            ['budgets',      'account_balance_wallet', 'Budgets'],
+            ['analytics',    'analytics',              'Analytics'],
+          ].map(([id, icon, label]) => (
+            <button
+              key={id}
+              className={`flo-mobile-nav-item${tab === id ? ' active' : ''}`}
+              onClick={() => goTab(id)}
+            >
+              <Icon name={icon} />
+              {label}
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {/* ── Modals ── */}
+      {txModal     && <TransactionModal onClose={() => setTxModal(false)}     onSave={handleAddTx} />}
+      {budgetModal && <BudgetModal      onClose={() => setBudgetModal(false)} onSave={handleAddBudget} />}
+
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SIDEBAR
+// ─────────────────────────────────────────────────────────────────────────────
+function Sidebar({ tab, goTab, isOpen, dark, toggleTheme, user, onAddTx, onLogout }) {
+  const NAV = [
+    ['dashboard',    'dashboard',              'Dashboard'],
+    ['transactions', 'receipt_long',           'Transactions'],
+    ['budgets',      'account_balance_wallet', 'Budgets'],
+    ['analytics',    'analytics',              'Analytics'],
+  ]
+
+  return (
+    <aside className={`flo-sidebar${isOpen ? ' mobile-open' : ''}`}>
+      {/* Brand */}
+      <div className="flo-sidebar-brand">
+        <div className="flo-sidebar-logo">F</div>
+        <div>
+          <div className="flo-sidebar-brand-name">Flo Finance</div>
+          <div className="flo-sidebar-brand-sub">Personal Finance</div>
+        </div>
+      </div>
+
+      {/* Add Transaction CTA */}
+      <button className="flo-add-btn" onClick={onAddTx}>
+        <Icon name="add" style={{ fontSize: 16 }} />
+        Add Transaction
+      </button>
+
+      {/* Navigation */}
+      <nav className="flo-sidebar-nav" aria-label="Main navigation">
+        {NAV.map(([id, icon, label]) => (
+          <button
+            key={id}
+            className={`flo-nav-item${tab === id ? ' active' : ''}`}
+            onClick={() => goTab(id)}
+          >
+            <Icon name={icon} />
+            {label}
+          </button>
+        ))}
+
+        <div className="flo-nav-section">
+          <button className="flo-nav-item" onClick={toggleTheme}>
+            <Icon name={dark ? 'light_mode' : 'dark_mode'} />
+            {dark ? 'Light Mode' : 'Dark Mode'}
+          </button>
+          <button className="flo-nav-item" onClick={onLogout}>
+            <Icon name="logout" />
+            Logout
+          </button>
+        </div>
+      </nav>
+
+      {/* User */}
+      <div className="flo-sidebar-footer">
+        <div className="flo-user-row">
+          <div className="flo-user-avatar">{getInitial(user?.name)}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="flo-user-name">{user?.name || 'User'}</div>
+            <div className="flo-user-email">{user?.email || ''}</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  STAT CARD
+// ─────────────────────────────────────────────────────────────────────────────
+function StatCard({ label, value, icon, iconColor, footer }) {
+  return (
+    <div className="flo-stat-card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <span className="flo-stat-label">{label}</span>
+        <Icon name={icon} className="flo-stat-icon" style={iconColor ? { color: iconColor } : {}} />
+      </div>
+      <div className="flo-stat-amount">{value}</div>
+      {footer && <div style={{ marginTop: 10 }}>{footer}</div>}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+function Panel({ title, action, onAction, children, style }) {
+  return (
+    <div className="flo-panel" style={style}>
+      {title && (
+        <div className="flo-panel-header">
+          <span className="flo-panel-title">{title}</span>
+          {action && (
+            <button className="flo-text-btn" onClick={onAction}>
+              {action} <Icon name="chevron_right" style={{ fontSize: 14 }} />
+            </button>
+          )}
+        </div>
+      )}
+      {children}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  DASHBOARD PAGE
+// ─────────────────────────────────────────────────────────────────────────────
+function DashboardPage({ user, income, expenses, savings, balance, budgets, transactions, currentMonth, onAddTx, onDelete, goTab }) {
+  const firstName = user?.name?.split(' ')[0] || 'there'
+
+  // Build 6-month bar chart data
+  const chartData = useMemo(() => {
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(TODAY.getFullYear(), TODAY.getMonth() - (5 - i), 1)
+      const ms = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      const txMonth = transactions.filter(t => t.date.startsWith(ms))
+      return {
+        label:   d.toLocaleDateString('en-US', { month: 'short' }),
+        income:  txMonth.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
+        expense: txMonth.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
+      }
+    })
+  }, [transactions])
+
+  const maxChartVal = Math.max(...chartData.map(d => Math.max(d.income, d.expense)), 1)
+  const recentTx = transactions.slice(0, 5)
+  const savingsPct = income > 0 ? Math.max(0, Math.round((savings / income) * 100)) : 0
+
+  return (
+    <>
+      {/* Header */}
+      <div className="flo-page-header">
+        <div>
+          <div className="flo-eyebrow">
+            {TODAY.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          </div>
+          <h1 className="flo-page-title">{GREETING}, {firstName}</h1>
+          <p className="flo-page-subtitle">
+            Here's your financial overview for {TODAY.toLocaleDateString('en-US', { month: 'long' })}.
+          </p>
+        </div>
+        {/* Hidden on mobile (mobile has header button) */}
+        <button
+          className="flo-btn-primary"
+          onClick={onAddTx}
+          style={{ flexShrink: 0 }}
+        >
+          <Icon name="add" style={{ fontSize: 16 }} />
+          Add Transaction
+        </button>
+      </div>
+
+      {/* Stats grid */}
+      <div className="flo-stats-grid">
+        <StatCard
+          label="Total Balance"
+          value={fmt(balance)}
+          icon="account_balance_wallet"
+          footer={
+            <span className="flo-stat-badge neutral">
+              <Icon name="radio_button_checked" style={{ fontSize: 10 }} /> As of today
+            </span>
+          }
+        />
+        <StatCard
+          label="Income"
+          value={fmt(income)}
+          icon="arrow_upward"
+          iconColor="#10B981"
+          footer={
+            <span className="flo-stat-badge positive">
+              <Icon name="trending_up" style={{ fontSize: 10 }} /> This month
+            </span>
+          }
+        />
+        <StatCard
+          label="Expenses"
+          value={fmt(expenses)}
+          icon="arrow_downward"
+          iconColor="#EF4444"
+          footer={
+            <span className="flo-stat-badge negative">
+              <Icon name="trending_down" style={{ fontSize: 10 }} /> This month
+            </span>
+          }
+        />
+        <StatCard
+          label="Savings"
+          value={fmt(Math.max(0, savings))}
+          icon="savings"
+          footer={
+            <div>
+              <div className="flo-progress-track" style={{ marginBottom: 4 }}>
+                <div className="flo-progress-fill safe" style={{ width: `${Math.min(100, savingsPct)}%` }} />
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--color-secondary)', textAlign: 'right', fontWeight: 500 }}>
+                {savingsPct}% of income
+              </div>
+            </div>
+          }
+        />
+      </div>
+
+      {/* Charts row */}
+      <div className="flo-charts-grid">
+        {/* Bar chart */}
+        <Panel title="Income vs Expenses">
+          <div style={{ padding: '0 20px 20px' }}>
+            <div style={{ display: 'flex', gap: 16, marginBottom: 12 }}>
+              <div className="flo-legend-item">
+                <div className="flo-legend-dot" style={{ background: 'var(--color-primary)' }} /> Income
+              </div>
+              <div className="flo-legend-item">
+                <div className="flo-legend-dot" style={{ background: 'var(--color-outline-variant)', border: '1px solid var(--color-outline)' }} /> Expenses
+              </div>
+            </div>
+            <div className="flo-bar-chart">
+              {chartData.map((d, i) => (
+                <div key={i} className="flo-bar-group">
+                  <div className="flo-bar-pair" style={{ height: 140 }}>
+                    <div
+                      className="flo-bar income"
+                      style={{ height: `${maxChartVal > 0 ? Math.max(2, (d.income / maxChartVal) * 100) : 2}%` }}
+                      title={`Income: ${fmt(d.income)}`}
+                    />
+                    <div
+                      className="flo-bar expense"
+                      style={{ height: `${maxChartVal > 0 ? Math.max(2, (d.expense / maxChartVal) * 100) : 2}%` }}
+                      title={`Expenses: ${fmt(d.expense)}`}
+                    />
+                  </div>
+                  <div className="flo-bar-label">{d.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Panel>
+
+        {/* Budget snapshot */}
+        <Panel title="Budget Overview" action="View all" onAction={() => goTab('budgets')}>
+          {budgets.length === 0 ? (
+            <div className="flo-empty" style={{ padding: '32px 20px' }}>
+              <Icon name="account_balance_wallet" />
+              <p>No budgets yet</p>
+            </div>
+          ) : (
+            <div>
+              {budgets.slice(0, 5).map(budget => {
+                const spent = currentMonth
+                  .filter(t => t.category === budget.category && t.type === 'expense')
+                  .reduce((s, t) => s + t.amount, 0)
+                const pct = budget.limit_amount > 0 ? (spent / budget.limit_amount) * 100 : 0
+                const { fill } = getBudgetStatus(pct)
+                return (
+                  <div key={budget.id} style={{ padding: '11px 20px', borderBottom: '1px solid var(--color-outline-variant)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-on-surface)' }}>
+                        {budget.category}
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--color-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                        {fmt(spent)} / {fmt(budget.limit_amount)}
+                      </span>
+                    </div>
+                    <div className="flo-progress-track">
+                      <div className={`flo-progress-fill ${fill}`} style={{ width: `${Math.min(100, pct)}%` }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </Panel>
+      </div>
+
+      {/* Recent transactions */}
+      <Panel title="Recent Transactions" action="View all" onAction={() => goTab('transactions')}>
+        {recentTx.length === 0 ? (
+          <div className="flo-empty">
+            <Icon name="receipt_long" />
+            <h3>No transactions yet</h3>
+            <p>Add your first transaction to get started.</p>
+          </div>
+        ) : (
+          <div className="flo-table-wrap">
+            <table className="flo-table">
+              <thead>
+                <tr>
+                  <th>Merchant</th>
+                  <th>Category</th>
+                  <th>Date</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentTx.map(tx => (
+                  <TxRow key={tx.id} tx={tx} onDelete={onDelete} showDelete={false} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
+    </>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  TRANSACTION ROW
+// ─────────────────────────────────────────────────────────────────────────────
+function TxRow({ tx, onDelete, showDelete }) {
+  const isIncome = tx.type === 'income'
+  return (
+    <tr>
+      <td>
+        <div className="flo-merchant-cell">
+          <div className={`flo-merchant-avatar${isIncome ? ' income' : ''}`}>
+            {isIncome
+              ? <Icon name="payments" style={{ fontSize: 14 }} />
+              : getInitial(tx.merchant)
+            }
+          </div>
+          <span className="flo-merchant-name">{tx.merchant}</span>
+        </div>
+      </td>
+      <td>
+        <span className={`flo-category-badge${isIncome ? ' income' : ''}`}>
+          {tx.category}
+        </span>
+      </td>
+      <td>
+        <span className="flo-date-cell">{fmtDate(tx.date)}</span>
+      </td>
+      <td>
+        <span className={`flo-amount${isIncome ? ' income' : ' expense'}`}>
+          {isIncome ? '+' : '-'}{fmt(tx.amount)}
+        </span>
+      </td>
+      {showDelete && (
+        <td style={{ width: 44, textAlign: 'center' }}>
+          <button
+            className="flo-btn-danger"
+            onClick={() => onDelete(tx.id)}
+            aria-label={`Delete ${tx.merchant}`}
+          >
+            <Icon name="delete" style={{ fontSize: 16 }} />
+          </button>
+        </td>
+      )}
+    </tr>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  TRANSACTIONS PAGE
+// ─────────────────────────────────────────────────────────────────────────────
+function TransactionsPage({ transactions, search, setSearch, typeFilter, setTypeFilter, onAddTx, onDelete }) {
+  return (
+    <>
+      <div className="flo-page-header">
+        <div>
+          <h1 className="flo-page-title">Transactions</h1>
+          <p className="flo-page-subtitle">Manage and track all your financial activity.</p>
+        </div>
+        <button className="flo-btn-primary" onClick={onAddTx} style={{ flexShrink: 0 }}>
+          <Icon name="add" style={{ fontSize: 16 }} />
+          Add Transaction
+        </button>
+      </div>
+
+      <div className="flo-panel">
+        {/* Toolbar */}
+        <div className="flo-toolbar">
+          <div className="flo-search">
+            <Icon name="search" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search transactions…"
+            />
+          </div>
+          <select
+            className="flo-filter-select"
+            value={typeFilter}
+            onChange={e => setTypeFilter(e.target.value)}
+          >
+            <option value="all">All types</option>
+            <option value="income">Income</option>
+            <option value="expense">Expenses</option>
+          </select>
+          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--color-secondary)', fontWeight: 500, letterSpacing: '0.04em' }}>
+            {transactions.length} ENTR{transactions.length !== 1 ? 'IES' : 'Y'}
+          </span>
+        </div>
+
+        {transactions.length === 0 ? (
+          <div className="flo-empty">
+            <Icon name="search_off" />
+            <h3>No transactions found</h3>
+            <p>{search ? 'Try a different search term.' : 'Add your first transaction above.'}</p>
+          </div>
+        ) : (
+          <div className="flo-table-wrap">
+            <table className="flo-table">
+              <thead>
+                <tr>
+                  <th>Merchant</th>
+                  <th>Category</th>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th style={{ width: 44 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map(tx => (
+                  <TxRow key={tx.id} tx={tx} onDelete={onDelete} showDelete />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  BUDGETS PAGE
+// ─────────────────────────────────────────────────────────────────────────────
+function BudgetsPage({ budgets, transactions, onAdd }) {
+  const totalAllocated = budgets.reduce((s, b) => s + b.limit_amount, 0)
+  const totalSpent = budgets.reduce((s, b) => {
+    return s + transactions
+      .filter(t => t.category === b.category && t.type === 'expense')
+      .reduce((ss, t) => ss + t.amount, 0)
+  }, 0)
+  const remaining  = totalAllocated - totalSpent
+  const overallPct = totalAllocated > 0 ? (totalSpent / totalAllocated) * 100 : 0
+
+  return (
+    <>
+      <div className="flo-page-header">
+        <div>
+          <h1 className="flo-page-title">Budgets</h1>
+          <p className="flo-page-subtitle">Stay on track with your monthly spending limits.</p>
+        </div>
+        <button className="flo-btn-primary" onClick={onAdd} style={{ flexShrink: 0 }}>
+          <Icon name="add" style={{ fontSize: 16 }} />
+          Create Budget
+        </button>
+      </div>
+
+      {/* Summary strip */}
+      {budgets.length > 0 && (
+        <div className="flo-budget-summary">
+          <div className="flo-budget-summary-grid">
+            <div className="flo-budget-summary-item">
+              <div className="flo-budget-summary-label">Total Allocated</div>
+              <div className="flo-budget-summary-value">{fmt(totalAllocated)}</div>
+            </div>
+            <div className="flo-budget-summary-item">
+              <div className="flo-budget-summary-label">Total Spent</div>
+              <div className="flo-budget-summary-value">{fmt(totalSpent)}</div>
+            </div>
+            <div className="flo-budget-summary-item">
+              <div className="flo-budget-summary-label">Remaining</div>
+              <div className={`flo-budget-summary-value${remaining >= 0 ? ' positive' : ''}`}>
+                {fmt(Math.abs(remaining))}
+              </div>
+            </div>
+          </div>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 11, color: 'var(--color-secondary)', fontWeight: 500 }}>
+              <span>{Math.round(overallPct)}% of total budget spent</span>
+            </div>
+            <div className="flo-progress-track" style={{ height: 6 }}>
+              <div
+                className={`flo-progress-fill ${overallPct >= 100 ? 'over' : overallPct >= 80 ? 'warning' : 'safe'}`}
+                style={{ width: `${Math.min(100, overallPct)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Budget cards */}
+      {budgets.length === 0 ? (
+        <div className="flo-panel">
+          <div className="flo-empty">
+            <Icon name="account_balance_wallet" />
+            <h3>No budgets yet</h3>
+            <p>Create your first budget to start tracking spending.</p>
+          </div>
+        </div>
+      ) : (
+        <div className="flo-budgets-grid">
+          {budgets.map(budget => {
+            const spent = transactions
+              .filter(t => t.category === budget.category && t.type === 'expense')
+              .reduce((s, t) => s + t.amount, 0)
+            const pct  = budget.limit_amount > 0 ? (spent / budget.limit_amount) * 100 : 0
+            const left = budget.limit_amount - spent
+            const { label, cls, fill } = getBudgetStatus(pct)
+
+            return (
+              <div key={budget.id} className="flo-budget-card">
+                <div className="flo-budget-card-header">
+                  <div className="flo-budget-category">
+                    <div className="flo-budget-icon">
+                      <Icon name={CATEGORY_ICONS[budget.category] || 'category'} />
+                    </div>
+                    <span className="flo-budget-name">{budget.category}</span>
+                  </div>
+                  <span className={`flo-budget-status ${cls}`}>{label}</span>
+                </div>
+
+                <div className="flo-budget-amounts">
+                  <span className={`flo-budget-spent${cls === 'over' ? ' over' : ''}`}>
+                    {fmt(spent)}
+                  </span>
+                  <span className="flo-budget-limit">/ {fmt(budget.limit_amount)}</span>
+                </div>
+
+                <div className="flo-progress-track">
+                  <div className={`flo-progress-fill ${fill}`} style={{ width: `${Math.min(100, pct)}%` }} />
+                </div>
+
+                <div className="flo-budget-footer">
+                  <span>{Math.round(pct)}% spent</span>
+                  <span style={{ color: left < 0 ? '#EF4444' : 'var(--color-on-surface)', fontWeight: 600 }}>
+                    {left >= 0 ? `${fmt(left)} left` : `${fmt(Math.abs(left))} over`}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+
+          {/* Add placeholder */}
+          <button className="flo-budget-add-card" onClick={onAdd}>
+            <Icon name="add" />
+            <span>Add Category Budget</span>
+          </button>
+        </div>
+      )}
+    </>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  ANALYTICS PAGE
+// ─────────────────────────────────────────────────────────────────────────────
+function AnalyticsPage({ income, expenses, transactions }) {
+  const byCategory = useMemo(() =>
+    transactions
+      .filter(t => t.type === 'expense')
+      .reduce((acc, t) => ({ ...acc, [t.category]: (acc[t.category] || 0) + t.amount }), {})
+  , [transactions])
+
+  const sorted = Object.entries(byCategory).sort((a, b) => b[1] - a[1])
+  const maxCat = sorted[0]?.[1] || 1
+
+  const trend = useMemo(() => {
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(TODAY.getFullYear(), TODAY.getMonth() - (5 - i), 1)
+      const ms = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      const txMonth = transactions.filter(t => t.date.startsWith(ms))
+      return {
+        label:   d.toLocaleDateString('en-US', { month: 'short' }),
+        income:  txMonth.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
+        expense: txMonth.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
+      }
+    })
+  }, [transactions])
+
+  const maxTrend = Math.max(...trend.map(d => Math.max(d.income, d.expense)), 1)
+
+  return (
+    <>
+      <div className="flo-page-header">
+        <div>
+          <h1 className="flo-page-title">Analytics</h1>
+          <p className="flo-page-subtitle">Understand your spending patterns over time.</p>
+        </div>
+      </div>
+
+      <div className="flo-analytics-grid">
+        {/* Health callout */}
+        <div className="flo-analytics-callout">
+          <div className="flo-eyebrow" style={{ color: 'inherit', opacity: 0.7 }}>Financial health</div>
+          <h2>{income >= expenses ? 'You are on track.' : 'Time to review spending.'}</h2>
+          <p>
+            Your income is {fmt(Math.abs(income - expenses))}{' '}
+            {income >= expenses ? 'higher' : 'lower'} than your expenses this month.
+          </p>
+          <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {[['Income', income], ['Expenses', expenses]].map(([label, val]) => (
+              <div key={label}>
+                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', opacity: 0.7, marginBottom: 4, textTransform: 'uppercase' }}>
+                  {label}
+                </div>
+                <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em' }}>
+                  {fmt(val)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Spending by category */}
+        <Panel title="Spending by Category">
+          <div className="flo-panel-body">
+            {sorted.length === 0 ? (
+              <div className="flo-empty" style={{ padding: '24px 0' }}>
+                <Icon name="pie_chart" />
+                <p>No expense data yet</p>
+              </div>
+            ) : (
+              sorted.map(([cat, val]) => (
+                <div key={cat} className="flo-analytics-row">
+                  <span className="flo-analytics-row-label">{cat}</span>
+                  <span className="flo-analytics-row-amount">{fmt(val)}</span>
+                  <div className="flo-analytics-row-bar">
+                    <div className="flo-analytics-row-fill" style={{ width: `${(val / maxCat) * 100}%` }} />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </Panel>
+      </div>
+
+      {/* 6-month trend */}
+      <Panel title="6-Month Trend" style={{ marginTop: 12 }}>
+        <div style={{ padding: '0 20px 20px' }}>
+          <div style={{ display: 'flex', gap: 16, marginBottom: 12 }}>
+            <div className="flo-legend-item">
+              <div className="flo-legend-dot" style={{ background: 'var(--color-primary)' }} /> Income
+            </div>
+            <div className="flo-legend-item">
+              <div className="flo-legend-dot" style={{ background: 'var(--color-outline-variant)', border: '1px solid var(--color-outline)' }} /> Expenses
+            </div>
+          </div>
+          <div className="flo-bar-chart">
+            {trend.map((d, i) => (
+              <div key={i} className="flo-bar-group">
+                <div className="flo-bar-pair" style={{ height: 160 }}>
+                  <div
+                    className="flo-bar income"
+                    style={{ height: `${Math.max(2, (d.income / maxTrend) * 100)}%` }}
+                    title={`Income: ${fmt(d.income)}`}
+                  />
+                  <div
+                    className="flo-bar expense"
+                    style={{ height: `${Math.max(2, (d.expense / maxTrend) * 100)}%` }}
+                    title={`Expenses: ${fmt(d.expense)}`}
+                  />
+                </div>
+                <div className="flo-bar-label">{d.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Panel>
+    </>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  AUTH SCREEN
+// ─────────────────────────────────────────────────────────────────────────────
+function AuthScreen({ onLogin, onRegister, dark, toggleTheme }) {
+  const [isReg,    setIsReg]    = useState(false)
+  const [name,     setName]     = useState('')
+  const [email,    setEmail]    = useState('mayank@gmail.com')
+  const [password, setPassword] = useState('demo')
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState('')
+
+  const submit = async () => {
+    setError('')
+    if (!email.trim() || !password.trim()) { setError('Please fill in all required fields.'); return }
+    if (isReg && !name.trim()) { setError('Please enter your name.'); return }
+    setLoading(true)
+    const err = isReg
+      ? await onRegister(name.trim(), email.trim(), password)
+      : await onLogin(email.trim(), password)
+    if (err) setError(err)
+    setLoading(false)
+  }
+
+  return (
+    <div className="flo-auth-screen">
+      <button
+        className="flo-theme-toggle"
+        onClick={toggleTheme}
+        style={{ position: 'absolute', top: 20, right: 20 }}
+      >
+        <Icon name={dark ? 'light_mode' : 'dark_mode'} style={{ fontSize: 15 }} />
+        {dark ? 'Light' : 'Dark'}
+      </button>
+
+      <div className="flo-auth-card">
+        {/* Brand */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 10 }}>
+          <div className="flo-auth-logo">F</div>
+          <div>
+            <h1 className="flo-auth-title">Flo Finance</h1>
+            <p className="flo-auth-subtitle">
+              {isReg ? 'Create your account to get started.' : 'Welcome back. Sign in to continue.'}
+            </p>
+          </div>
+        </div>
+
+        {error && <div className="flo-auth-error">{error}</div>}
+
+        {/* Fields */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {isReg && (
+            <div className="flo-field">
+              <label className="flo-label">Full Name</label>
+              <input className="flo-input" type="text" value={name}
+                onChange={e => setName(e.target.value)} placeholder="e.g. Mayank Dobhal"
+                autoComplete="name" onKeyDown={e => e.key === 'Enter' && submit()} />
+            </div>
+          )}
+          <div className="flo-field">
+            <label className="flo-label">Email Address</label>
+            <input className="flo-input" type="email" value={email}
+              onChange={e => setEmail(e.target.value)} placeholder="user@domain.com"
+              autoComplete="email" onKeyDown={e => e.key === 'Enter' && submit()} />
+          </div>
+          <div className="flo-field">
+            <label className="flo-label">Password</label>
+            <input className="flo-input" type="password" value={password}
+              onChange={e => setPassword(e.target.value)} placeholder="••••••••"
+              autoComplete={isReg ? 'new-password' : 'current-password'}
+              onKeyDown={e => e.key === 'Enter' && submit()} />
+          </div>
+        </div>
+
+        <button
+          className="flo-btn-primary"
+          style={{ width: '100%', justifyContent: 'center', padding: '13px 18px', fontSize: 13, letterSpacing: '0.08em' }}
+          onClick={submit}
+          disabled={loading}
+        >
+          {loading
+            ? 'Please wait…'
+            : <>{isReg ? 'Create Account' : 'Sign In'} <Icon name="arrow_forward" style={{ fontSize: 16 }} /></>
+          }
+        </button>
+
+        <button
+          className="flo-auth-switch"
+          onClick={() => { setIsReg(r => !r); setError('') }}
+        >
+          {isReg
+            ? <>Already have an account? <strong>Sign in</strong></>
+            : <>New to Flo? <strong>Create an account</strong></>
+          }
+        </button>
+
+        {!isReg && (
+          <span className="flo-demo-hint">Demo: mayank@gmail.com / any password</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  TRANSACTION MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+function TransactionModal({ onClose, onSave }) {
+  const today = new Date().toISOString().split('T')[0]
+  const [form, setForm] = useState({
+    merchant: '', category: 'Food & Dining', amount: '', type: 'expense', date: today,
+  })
+  const [error, setError] = useState('')
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleSave = () => {
+    if (!form.merchant.trim()) { setError('Please enter a merchant name.'); return }
+    if (!form.amount || Number(form.amount) <= 0) { setError('Please enter a valid amount.'); return }
+    onSave({ ...form, amount: Number(form.amount) })
+  }
+
+  return (
+    <div className="flo-modal-backdrop" onClick={onClose}>
+      <div className="flo-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Add Transaction">
+        <div className="flo-modal-header">
+          <span className="flo-modal-title">Add Transaction</span>
+          <button className="flo-icon-btn" onClick={onClose} aria-label="Close"><Icon name="close" style={{ fontSize: 20 }} /></button>
+        </div>
+
+        <div className="flo-modal-body">
+          {error && <div className="flo-auth-error">{error}</div>}
+
+          {/* Type toggle */}
+          <div className="flo-field">
+            <label className="flo-label">Type</label>
+            <div className="flo-type-toggle">
+              <button
+                className={`flo-type-btn${form.type === 'expense' ? ' active expense' : ''}`}
+                onClick={() => set('type', 'expense')}
+              >
+                <Icon name="arrow_downward" style={{ fontSize: 14, marginRight: 4 }} /> Expense
+              </button>
+              <button
+                className={`flo-type-btn${form.type === 'income' ? ' active income' : ''}`}
+                onClick={() => set('type', 'income')}
+              >
+                <Icon name="arrow_upward" style={{ fontSize: 14, marginRight: 4 }} /> Income
+              </button>
+            </div>
+          </div>
+
+          <div className="flo-field">
+            <label className="flo-label">Merchant / Description</label>
+            <input className="flo-input" type="text" value={form.merchant}
+              onChange={e => set('merchant', e.target.value)} placeholder="e.g. Starbucks" />
+          </div>
+
+          <div className="flo-form-row">
+            <div className="flo-field">
+              <label className="flo-label">Amount</label>
+              <input className="flo-input" type="number" min="0" step="0.01"
+                value={form.amount} onChange={e => set('amount', e.target.value)} placeholder="0.00" />
+            </div>
+            <div className="flo-field">
+              <label className="flo-label">Date</label>
+              <input className="flo-input" type="date" value={form.date}
+                onChange={e => set('date', e.target.value)} />
+            </div>
+          </div>
+
+          <div className="flo-field">
+            <label className="flo-label">Category</label>
+            <select className="flo-select" value={form.category}
+              onChange={e => set('category', e.target.value)}>
+              {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="flo-modal-footer">
+          <button className="flo-btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="flo-btn-primary" onClick={handleSave}>Save Transaction</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  BUDGET MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+function BudgetModal({ onClose, onSave }) {
+  const [form, setForm] = useState({ category: 'Food & Dining', limit_amount: '' })
+  const [error, setError] = useState('')
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleSave = () => {
+    if (!form.limit_amount || Number(form.limit_amount) <= 0) {
+      setError('Please enter a valid budget limit.')
+      return
+    }
+    onSave({ ...form, limit_amount: Number(form.limit_amount) })
+  }
+
+  return (
+    <div className="flo-modal-backdrop" onClick={onClose}>
+      <div className="flo-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Create Budget">
+        <div className="flo-modal-header">
+          <span className="flo-modal-title">Create Budget</span>
+          <button className="flo-icon-btn" onClick={onClose} aria-label="Close"><Icon name="close" style={{ fontSize: 20 }} /></button>
+        </div>
+
+        <div className="flo-modal-body">
+          {error && <div className="flo-auth-error">{error}</div>}
+
+          <div className="flo-field">
+            <label className="flo-label">Category</label>
+            <select className="flo-select" value={form.category}
+              onChange={e => set('category', e.target.value)}>
+              {CATEGORIES.filter(c => c !== 'Salary').map(c => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+
+          <div className="flo-field">
+            <label className="flo-label">Monthly Limit</label>
+            <input className="flo-input" type="number" min="0" step="0.01"
+              value={form.limit_amount} onChange={e => set('limit_amount', e.target.value)} placeholder="0.00" />
+          </div>
+        </div>
+
+        <div className="flo-modal-footer">
+          <button className="flo-btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="flo-btn-primary" onClick={handleSave}>Create Budget</button>
+        </div>
+      </div>
+    </div>
+  )
+}

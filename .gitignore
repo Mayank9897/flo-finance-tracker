@@ -2,8 +2,11 @@
 client/node_modules/
 server/node_modules/
 client/dist/
+frontend/dist/
 .env
 server/.env
+backend/.env
 *.log
 .DS_Store
 Thumbs.db
+stitch design/
