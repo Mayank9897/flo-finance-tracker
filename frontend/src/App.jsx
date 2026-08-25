@@ -477,15 +477,15 @@ function DashboardPage({ user, income, expenses, savings, balance, budgets, tran
             <div className="flo-bar-chart">
               {chartData.map((d, i) => (
                 <div key={i} className="flo-bar-group">
-                  <div className="flo-bar-pair" style={{ height: 140 }}>
+                  <div className="flo-bar-pair">
                     <div
                       className="flo-bar income"
-                      style={{ height: `${maxChartVal > 0 ? Math.max(2, (d.income / maxChartVal) * 100) : 2}%` }}
+                      style={{ height: d.income > 0 ? `${Math.max(4, (d.income / maxChartVal) * 100)}%` : '2px' }}
                       title={`Income: ${fmt(d.income)}`}
                     />
                     <div
                       className="flo-bar expense"
-                      style={{ height: `${maxChartVal > 0 ? Math.max(2, (d.expense / maxChartVal) * 100) : 2}%` }}
+                      style={{ height: d.expense > 0 ? `${Math.max(4, (d.expense / maxChartVal) * 100)}%` : '2px' }}
                       title={`Expenses: ${fmt(d.expense)}`}
                     />
                   </div>
