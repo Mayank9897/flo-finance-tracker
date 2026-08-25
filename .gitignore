@@ -1,7 +1,9 @@
-# Database config (contains credentials)
-config/db.php
-
-# XAMPP / local environment
+﻿node_modules/
+client/node_modules/
+server/node_modules/
+client/dist/
+.env
+server/.env
 *.log
 .DS_Store
 Thumbs.db
