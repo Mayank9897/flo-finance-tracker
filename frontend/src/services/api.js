@@ -1,0 +1,21 @@
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+const TOKEN_KEY = 'flo-auth-token'
+
+const seedState = { user: { id: 1, name: 'Mayank Dobhal', email: 'mayank@gmail.com' }, transactions: [{ id: 1, type: 'expense', merchant: 'Whole Foods Market', category: 'Groceries', date: '2026-08-25', amount: 86.24 }, { id: 2, type: 'expense', merchant: 'Figma', category: 'Subscriptions', date: '2026-08-24', amount: 15 }, { id: 3, type: 'income', merchant: 'Acme Inc.', category: 'Salary', date: '2026-08-24', amount: 4280 }, { id: 4, type: 'expense', merchant: 'Blue Bottle Coffee', category: 'Food & Dining', date: '2026-08-23', amount: 6.5 }], budgets: [{ id: 1, category: 'Housing', limit_amount: 1500 }, { id: 2, category: 'Food & Dining', limit_amount: 800 }, { id: 3, category: 'Transport', limit_amount: 500 }, { id: 4, category: 'Entertainment', limit_amount: 700 }] }
+const localState = () => { try { return JSON.parse(localStorage.getItem('flo-finance-state')) || seedState } catch { return seedState } }
+const saveLocal = state => { localStorage.setItem('flo-finance-state', JSON.stringify(state)); return state }
+const request = async (path, options = {}) => { const response = await fetch(`${API_URL}${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}), ...options.headers } }); const body = await response.json(); if (!response.ok) throw new Error(body.message || 'Request failed'); return body }
+const getToken = () => localStorage.getItem(TOKEN_KEY)
+const fallback = (operation, localOperation) => operation().catch(() => localOperation())
+
+export const financeApi = {
+  getState: () => localState(),
+  getSession: () => Boolean(getToken() || localStorage.getItem('flo-finance-session')),
+  loadState: () => fallback(async () => { const [profile, transactions, budgets] = await Promise.all([request('/auth/me'), request('/transactions?month=2026-08'), request('/budgets?month=2026-08')]); return { user: profile.user, transactions, budgets } }, async () => localState()),
+  login: async (email, password) => fallback(async () => { const result = await request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }); localStorage.setItem(TOKEN_KEY, result.token); return result.user }, async () => { const state = localState(); if (email.trim().toLowerCase() !== state.user.email) throw new Error('Use mayank@gmail.com for the demo account.'); localStorage.setItem('flo-finance-session', 'active'); return state.user }),
+  register: async (name, email, password) => fallback(async () => { const result = await request('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, password }) }); localStorage.setItem(TOKEN_KEY, result.token); return result.user }, async () => { const state = localState(); state.user = { ...state.user, name: name.trim() || 'New user', email: email.trim().toLowerCase() }; saveLocal(state); localStorage.setItem('flo-finance-session', 'active'); return state.user }),
+  logout: () => { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem('flo-finance-session') },
+  addTransaction: transaction => fallback(() => request('/transactions', { method: 'POST', body: JSON.stringify(transaction) }), async () => { const state = localState(); const item = { ...transaction, id: Date.now(), amount: Number(transaction.amount) }; state.transactions.unshift(item); saveLocal(state); return item }),
+  deleteTransaction: id => fallback(() => request(`/transactions/${id}`, { method: 'DELETE' }), async () => { const state = localState(); state.transactions = state.transactions.filter(item => item.id !== id); saveLocal(state) }),
+  saveBudget: budget => fallback(() => request('/budgets', { method: 'POST', body: JSON.stringify({ ...budget, month: '2026-08' }) }), async () => { const state = localState(); const item = { ...budget, id: Date.now(), limit_amount: Number(budget.limit_amount) }; state.budgets.unshift(item); saveLocal(state); return item }),
+}

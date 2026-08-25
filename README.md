@@ -1,57 +1,161 @@
-# Flo — Finance Tracker 💸
+# Flo Finance Tracker
 
-A full-stack personal finance tracker built with vanilla JavaScript, PHP, and MySQL. Track income and expenses, visualize spending by category, set monthly budgets, and see trends over time.
+Flo is a full-stack personal finance dashboard for tracking income, expenses, monthly budgets, and spending analytics. It uses a polished black-and-neutral Shadcn-inspired interface designed for a clear, resume-ready product experience.
 
 ## Features
-- 🔐 User authentication (register/login) with session-based auth
-- 💰 Track income & expenses by category
-- 📊 Analytics with charts (monthly trends, category breakdown, cumulative income vs. expenses)
-- 📅 Budget management per category per month
-- 🔍 Search & filter transactions
-- 🌗 Light & dark mode, saved per device
+
+- JWT authentication with sign in and registration
+- Indian rupee (INR) currency formatting
+- Dashboard summary for balance, income, expenses, and savings rate
+- Transaction creation, deletion, search, and income/expense filtering
+- Monthly category budgets with live spending progress
+- Spending analytics and monthly cash-flow visualization
+- Responsive desktop sidebar and mobile navigation
+- JSON persistence for simple local and demo deployments
+- Local fallback mode for frontend preview when the API is unavailable
 
 ## Tech Stack
-- **Frontend:** HTML, CSS, Vanilla JavaScript, Chart.js, Tailwind CSS
-- **Backend:** PHP (session-based auth, REST-style JSON endpoints)
-- **Database:** MySQL
 
-## Screenshots
+### Frontend
 
-| Login | Dashboard |
-|---|---|
-| ![Login screen](screenshots/login.png) | ![Dashboard](screenshots/dashboard.png) |
+- React 18
+- Vite
+- Lucide React icons
+- CSS design tokens and responsive CSS
+- Fetch API for backend communication
+- `Intl.NumberFormat` for Indian currency formatting
 
-**Analytics**
-![Analytics](screenshots/analytics.png)
+### Backend
 
-## Setup (Local)
-
-1. Clone the repo into your XAMPP `htdocs` folder
-2. Start Apache & MySQL in XAMPP Control Panel
-3. Copy `config/db.example.php` to `config/db.php` and fill in your credentials
-4. Import `config/setup.sql` in phpMyAdmin to create the database & tables
-5. Open `http://localhost/expense-tracker/login.html`
+- Node.js
+- Express.js
+- JWT via `jsonwebtoken`
+- Password hashing via `bcryptjs`
+- CORS via `cors`
+- Environment configuration via `dotenv`
+- JSON file persistence using Node.js `fs`
 
 ## Project Structure
 
-```
-├── index.html          # Dashboard (transactions, analytics, budgets)
-├── login.html           # Sign in / create account
-├── script.js             # Frontend logic + API calls
-├── style.css             # Styling
-├── api/
-│   ├── auth/              # register, login, logout, session check
-│   ├── transactions/    # add, get, delete
-│   ├── analytics/        # monthly trends, summary
-│   └── budget/            # get, save
-└── config/
-    ├── db.example.php  # DB credentials template
-    ├── auth.php           # session helper + CORS
-    └── setup.sql          # database schema
+```text
+flo-finance-tracker/
+├── backend/
+│   ├── config/db.js
+│   ├── server.js
+│   ├── utils/jwt.js
+│   ├── utils/password.js
+│   └── package.json
+├── frontend/
+│   ├── src/App.jsx
+│   ├── src/services/api.js
+│   ├── src/styles/index.css
+│   ├── vite.config.js
+│   └── package.json
+├── flo_data.json
+└── package.json
 ```
 
-## Author
-Built by [Mayank Dobhal](https://github.com/Mayank9897)
+## Local Development
 
-## License
-[MIT](LICENSE) © 2026 Mayank Dobhal
+Prerequisites: Node.js 18 or newer and npm.
+
+Install dependencies:
+
+```powershell
+npm run install:all
+```
+
+Start the backend:
+
+```powershell
+cd backend
+npm start
+```
+
+Start the frontend in a second terminal:
+
+```powershell
+cd frontend
+npm run dev
+```
+
+Open `http://localhost:5173`.
+
+The API runs at `http://localhost:5000`. Its health endpoint is `http://localhost:5000/api/health`.
+
+Demo login:
+
+```text
+Email: mayank@gmail.com
+Password: demo
+```
+
+## Environment Variables
+
+Copy the example files before deployment:
+
+```powershell
+Copy-Item backend/.env.example backend/.env
+Copy-Item frontend/.env.example frontend/.env
+```
+
+Backend `.env`:
+
+```env
+PORT=5000
+JWT_SECRET=replace-with-a-long-random-secret
+CLIENT_URL=http://localhost:5173
+```
+
+Frontend `.env`:
+
+```env
+VITE_API_URL=http://localhost:5000/api
+```
+
+For production, set `VITE_API_URL` to the deployed backend URL ending in `/api`, and set `CLIENT_URL` to the deployed frontend URL.
+
+## API Overview
+
+Public endpoints:
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/health`
+
+Protected endpoints require `Authorization: Bearer <token>`:
+
+- `GET /api/auth/me`
+- `GET|POST|DELETE /api/transactions`
+- `GET|POST /api/budgets`
+- `GET /api/analytics/summary`
+- `GET /api/analytics/categories`
+- `GET /api/analytics/monthly-trend`
+
+## Production Deployment
+
+### Backend on Render
+
+- Root directory: `backend`
+- Build command: `npm install`
+- Start command: `npm start`
+- Add `JWT_SECRET` and `CLIENT_URL` environment variables
+
+### Frontend on Vercel
+
+- Root directory: `frontend`
+- Build command: `npm run build`
+- Output directory: `dist`
+- Add `VITE_API_URL=https://your-backend-domain.com/api`
+
+## Validation
+
+```powershell
+cd frontend
+npm run build
+
+cd ..\backend
+node --check server.js
+```
+
+The backend uses `flo_data.json` for persistence. This is convenient for a portfolio or resume demo, but a production application should use a managed database such as PostgreSQL or MongoDB because some hosting platforms do not persist local files between deployments.
