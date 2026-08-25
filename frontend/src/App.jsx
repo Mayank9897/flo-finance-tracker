@@ -809,11 +809,15 @@ function BudgetsPage({ budgets, transactions, onAdd }) {
 //  ANALYTICS PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 function AnalyticsPage({ income, expenses, transactions }) {
-  const byCategory = useMemo(() =>
-    transactions
-      .filter(t => t.type === 'expense')
-      .reduce((acc, t) => ({ ...acc, [t.category]: (acc[t.category] || 0) + t.amount }), {})
+  const currentMonthTransactions = useMemo(() =>
+    transactions.filter(t => t.date && t.date.startsWith(CURRENT_MONTH))
   , [transactions])
+
+  const byCategory = useMemo(() =>
+    currentMonthTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((acc, t) => ({ ...acc, [t.category]: (acc[t.category] || 0) + Number(t.amount || 0) }), {})
+  , [currentMonthTransactions])
 
   const sorted = Object.entries(byCategory).sort((a, b) => b[1] - a[1])
   const maxCat = sorted[0]?.[1] || 1
@@ -822,11 +826,11 @@ function AnalyticsPage({ income, expenses, transactions }) {
     return Array.from({ length: 6 }, (_, i) => {
       const d = new Date(TODAY.getFullYear(), TODAY.getMonth() - (5 - i), 1)
       const ms = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      const txMonth = transactions.filter(t => t.date.startsWith(ms))
+      const txMonth = transactions.filter(t => t.date && t.date.startsWith(ms))
       return {
         label:   d.toLocaleDateString('en-US', { month: 'short' }),
-        income:  txMonth.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
-        expense: txMonth.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
+        income:  txMonth.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount || 0), 0),
+        expense: txMonth.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount || 0), 0),
       }
     })
   }, [transactions])
@@ -871,7 +875,7 @@ function AnalyticsPage({ income, expenses, transactions }) {
             {sorted.length === 0 ? (
               <div className="flo-empty" style={{ padding: '24px 0' }}>
                 <Icon name="pie_chart" />
-                <p>No expense data yet</p>
+                <p>No expense data yet for this month</p>
               </div>
             ) : (
               sorted.map(([cat, val]) => (
@@ -905,12 +909,12 @@ function AnalyticsPage({ income, expenses, transactions }) {
                 <div className="flo-bar-pair" style={{ height: 160 }}>
                   <div
                     className="flo-bar income"
-                    style={{ height: `${Math.max(2, (d.income / maxTrend) * 100)}%` }}
+                    style={{ height: d.income > 0 ? `${Math.max(4, (d.income / maxTrend) * 100)}%` : '2px' }}
                     title={`Income: ${fmt(d.income)}`}
                   />
                   <div
                     className="flo-bar expense"
-                    style={{ height: `${Math.max(2, (d.expense / maxTrend) * 100)}%` }}
+                    style={{ height: d.expense > 0 ? `${Math.max(4, (d.expense / maxTrend) * 100)}%` : '2px' }}
                     title={`Expenses: ${fmt(d.expense)}`}
                   />
                 </div>

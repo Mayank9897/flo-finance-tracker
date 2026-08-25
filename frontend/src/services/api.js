@@ -39,8 +39,15 @@ const seedState = {
   ]
 }
 
+const SEED_VERSION = 'v2'
 const localState = () => {
   try {
+    const savedVer = localStorage.getItem('flo-seed-ver')
+    if (savedVer !== SEED_VERSION) {
+      localStorage.setItem('flo-seed-ver', SEED_VERSION)
+      localStorage.setItem('flo-finance-state', JSON.stringify(seedState))
+      return seedState
+    }
     return JSON.parse(localStorage.getItem('flo-finance-state')) || seedState
   } catch {
     return seedState
