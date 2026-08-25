@@ -1,18 +1,33 @@
 # Flo Finance Tracker
 
-Flo is a full-stack personal finance dashboard for tracking income, expenses, monthly budgets, and spending analytics. It uses a polished black-and-neutral Shadcn-inspired interface designed for a clear, resume-ready product experience.
+Flo is a full-stack personal finance management application for understanding spending, tracking income, and building healthier monthly money habits. It combines a polished black-and-neutral Shadcn-inspired dashboard with a JWT-secured REST API and persistent finance data.
 
-## Features
+## Core Functionality
 
-- JWT authentication with sign in and registration
-- Indian rupee (INR) currency formatting
-- Dashboard summary for balance, income, expenses, and savings rate
-- Transaction creation, deletion, search, and income/expense filtering
-- Monthly category budgets with live spending progress
-- Spending analytics and monthly cash-flow visualization
-- Responsive desktop sidebar and mobile navigation
-- JSON persistence for simple local and demo deployments
-- Local fallback mode for frontend preview when the API is unavailable
+- Secure user registration and login with JWT authentication
+- Personalized finance workspace with responsive desktop and mobile navigation
+- Dashboard summary for total balance, monthly income, expenses, and savings rate
+- Indian rupee (INR) currency formatting throughout the application
+- Add and delete income or expense transactions
+- Transaction search and filtering by income or expense type
+- Categorized transactions with merchant, date, amount, and description details
+- Monthly category budgets with spending totals and progress indicators
+- Budget creation for housing, food, transport, entertainment, subscriptions, and other categories
+- Cash-flow visualization across the previous twelve months
+- Spending analytics grouped by category
+- Financial health summary based on income and expenses
+- Persistent JSON data storage for users, transactions, and budgets
+- Responsive layout optimized for desktop and mobile screens
+
+## Application Architecture
+
+### Frontend
+
+The React single-page application provides the authenticated finance workspace, dashboard views, forms, navigation, responsive layouts, and data visualization. The frontend service layer communicates with the backend REST API and supports local fallback data for offline previews.
+
+### Backend
+
+The Express REST API manages authentication, user access, transactions, budgets, and analytics. JWT middleware protects private resources, while bcryptjs handles password hashing. The current persistence layer stores application data in `flo_data.json` through a small Node.js file-storage module.
 
 ## Tech Stack
 
@@ -20,26 +35,28 @@ Flo is a full-stack personal finance dashboard for tracking income, expenses, mo
 
 - React 18
 - Vite
-- Lucide React icons
-- CSS design tokens and responsive CSS
-- Fetch API for backend communication
-- `Intl.NumberFormat` for Indian currency formatting
+- JavaScript (JSX)
+- Lucide React
+- Responsive CSS with design tokens
+- Fetch API
+- `Intl.NumberFormat` for INR formatting
 
 ### Backend
 
 - Node.js
 - Express.js
-- JWT via `jsonwebtoken`
-- Password hashing via `bcryptjs`
-- CORS via `cors`
-- Environment configuration via `dotenv`
-- JSON file persistence using Node.js `fs`
+- JSON Web Tokens with `jsonwebtoken`
+- Password hashing with `bcryptjs`
+- CORS
+- Dotenv
+- Node.js `fs` file persistence
 
-### Database / Persistence
+### Development and Tooling
 
-This version uses `flo_data.json` in the repository root as a lightweight file-based database. The backend reads and writes users, transactions, and budgets through `backend/config/db.js`. It does not currently use PostgreSQL, MongoDB, or another external database.
-
-This approach is suitable for local development and a portfolio demo. For production users, replace the JSON persistence layer with a managed database because many cloud hosts use ephemeral filesystems.
+- npm workspaces-style frontend/backend structure
+- Vite production bundling
+- Nodemon development server
+- Concurrently for running project services
 
 ## Project Structure
 
@@ -60,108 +77,3 @@ flo-finance-tracker/
 ├── flo_data.json
 └── package.json
 ```
-
-## Local Development
-
-Prerequisites: Node.js 18 or newer and npm.
-
-Install dependencies:
-
-```powershell
-npm run install:all
-```
-
-Start the backend:
-
-```powershell
-cd backend
-npm start
-```
-
-Start the frontend in a second terminal:
-
-```powershell
-cd frontend
-npm run dev
-```
-
-Open `http://localhost:5173`.
-
-The API runs at `http://localhost:5000`. Its health endpoint is `http://localhost:5000/api/health`.
-
-Demo login:
-
-```text
-Email: mayank@gmail.com
-Password: demo
-```
-
-## Environment Variables
-
-Copy the example files before deployment:
-
-```powershell
-Copy-Item backend/.env.example backend/.env
-Copy-Item frontend/.env.example frontend/.env
-```
-
-Backend `.env`:
-
-```env
-PORT=5000
-JWT_SECRET=replace-with-a-long-random-secret
-CLIENT_URL=http://localhost:5173
-```
-
-Frontend `.env`:
-
-```env
-VITE_API_URL=http://localhost:5000/api
-```
-
-For production, set `VITE_API_URL` to the deployed backend URL ending in `/api`, and set `CLIENT_URL` to the deployed frontend URL.
-
-## API Overview
-
-Public endpoints:
-
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `GET /api/health`
-
-Protected endpoints require `Authorization: Bearer <token>`:
-
-- `GET /api/auth/me`
-- `GET|POST|DELETE /api/transactions`
-- `GET|POST /api/budgets`
-- `GET /api/analytics/summary`
-- `GET /api/analytics/categories`
-- `GET /api/analytics/monthly-trend`
-
-## Production Deployment
-
-### Backend on Render
-
-- Root directory: `backend`
-- Build command: `npm install`
-- Start command: `npm start`
-- Add `JWT_SECRET` and `CLIENT_URL` environment variables
-
-### Frontend on Vercel
-
-- Root directory: `frontend`
-- Build command: `npm run build`
-- Output directory: `dist`
-- Add `VITE_API_URL=https://your-backend-domain.com/api`
-
-## Validation
-
-```powershell
-cd frontend
-npm run build
-
-cd ..\backend
-node --check server.js
-```
-
-The backend uses `flo_data.json` for persistence. This is convenient for a portfolio or resume demo, but a production application should use a managed database such as PostgreSQL or MongoDB because some hosting platforms do not persist local files between deployments.
