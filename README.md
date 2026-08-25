@@ -35,6 +35,12 @@ Flo is a full-stack personal finance dashboard for tracking income, expenses, mo
 - Environment configuration via `dotenv`
 - JSON file persistence using Node.js `fs`
 
+### Database / Persistence
+
+This version uses `flo_data.json` in the repository root as a lightweight file-based database. The backend reads and writes users, transactions, and budgets through `backend/config/db.js`. It does not currently use PostgreSQL, MongoDB, or another external database.
+
+This approach is suitable for local development and a portfolio demo. For production users, replace the JSON persistence layer with a managed database because many cloud hosts use ephemeral filesystems.
+
 ## Project Structure
 
 ```text
