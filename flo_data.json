@@ -2,35 +2,47 @@
   "users": [
     {
       "id": 1,
-      "name": "mayank",
+      "name": "Mayank Dobhal",
       "email": "mayankdobhal19@gmail.com",
       "password": "329837e82b93f470dc653af3d7871ef8:8b62035dec6b6f78d4e21e27f4f5d9dd31726bbda81372e0427988acbe662ea23061010aa7095e5938e97183b96c494a3c25ad3ceb293ea9bd559499315d12bd",
       "created_at": "2026-08-25T08:52:14.156Z"
     }
   ],
   "transactions": [
-    {
-      "id": 1,
-      "user_id": 1,
-      "type": "expense",
-      "category": "🍕 Food & Dining",
-      "amount": 456,
-      "date": "2026-08-25",
-      "description": "No description",
-      "created_at": "2026-08-25T08:53:04.678Z"
-    }
+    { "id": 1, "user_id": 1, "type": "income", "category": "Salary", "amount": 65000, "date": "2026-08-01", "description": "Monthly Salary", "created_at": "2026-08-01T10:00:00.000Z" },
+    { "id": 2, "user_id": 1, "type": "expense", "category": "Housing", "amount": 18000, "date": "2026-08-03", "description": "Apartment Rent", "created_at": "2026-08-03T10:00:00.000Z" },
+    { "id": 3, "user_id": 1, "type": "expense", "category": "Groceries", "amount": 5400, "date": "2026-08-10", "description": "Supermarket Groceries", "created_at": "2026-08-10T10:00:00.000Z" },
+    { "id": 4, "user_id": 1, "type": "expense", "category": "Food & Dining", "amount": 3200, "date": "2026-08-15", "description": "Dinner & Cafe", "created_at": "2026-08-15T10:00:00.000Z" },
+    { "id": 5, "user_id": 1, "type": "expense", "category": "Transport", "amount": 2800, "date": "2026-08-18", "description": "Fuel & Commute", "created_at": "2026-08-18T10:00:00.000Z" },
+    { "id": 6, "user_id": 1, "type": "expense", "category": "Subscriptions", "amount": 1499, "date": "2026-08-20", "description": "Software & Streaming", "created_at": "2026-08-20T10:00:00.000Z" },
+
+    { "id": 7, "user_id": 1, "type": "income", "category": "Salary", "amount": 62000, "date": "2026-07-01", "description": "Monthly Salary", "created_at": "2026-07-01T10:00:00.000Z" },
+    { "id": 8, "user_id": 1, "type": "expense", "category": "Housing", "amount": 18000, "date": "2026-07-03", "description": "Apartment Rent", "created_at": "2026-07-03T10:00:00.000Z" },
+    { "id": 9, "user_id": 1, "type": "expense", "category": "Groceries", "amount": 4800, "date": "2026-07-12", "description": "Weekly Groceries", "created_at": "2026-07-12T10:00:00.000Z" },
+    { "id": 10, "user_id": 1, "type": "expense", "category": "Food & Dining", "amount": 4100, "date": "2026-07-18", "description": "Restaurants", "created_at": "2026-07-18T10:00:00.000Z" },
+
+    { "id": 11, "user_id": 1, "type": "income", "category": "Salary", "amount": 60000, "date": "2026-06-01", "description": "Monthly Salary", "created_at": "2026-06-01T10:00:00.000Z" },
+    { "id": 12, "user_id": 1, "type": "expense", "category": "Housing", "amount": 18000, "date": "2026-06-03", "description": "Apartment Rent", "created_at": "2026-06-03T10:00:00.000Z" },
+    { "id": 13, "user_id": 1, "type": "expense", "category": "Entertainment", "amount": 6500, "date": "2026-06-15", "description": "Weekend Trip", "created_at": "2026-06-15T10:00:00.000Z" },
+
+    { "id": 14, "user_id": 1, "type": "income", "category": "Salary", "amount": 60000, "date": "2026-05-01", "description": "Monthly Salary", "created_at": "2026-05-01T10:00:00.000Z" },
+    { "id": 15, "user_id": 1, "type": "expense", "category": "Housing", "amount": 18000, "date": "2026-05-03", "description": "Apartment Rent", "created_at": "2026-05-03T10:00:00.000Z" },
+    { "id": 16, "user_id": 1, "type": "expense", "category": "Groceries", "amount": 5100, "date": "2026-05-14", "description": "Monthly Supplies", "created_at": "2026-05-14T10:00:00.000Z" },
+
+    { "id": 17, "user_id": 1, "type": "income", "category": "Salary", "amount": 58000, "date": "2026-04-01", "description": "Monthly Salary", "created_at": "2026-04-01T10:00:00.000Z" },
+    { "id": 18, "user_id": 1, "type": "expense", "category": "Housing", "amount": 18000, "date": "2026-04-03", "description": "Apartment Rent", "created_at": "2026-04-03T10:00:00.000Z" },
+
+    { "id": 19, "user_id": 1, "type": "income", "category": "Salary", "amount": 58000, "date": "2026-03-01", "description": "Monthly Salary", "created_at": "2026-03-01T10:00:00.000Z" },
+    { "id": 20, "user_id": 1, "type": "expense", "category": "Housing", "amount": 18000, "date": "2026-03-03", "description": "Apartment Rent", "created_at": "2026-03-03T10:00:00.000Z" }
   ],
   "budgets": [
-    {
-      "id": 1,
-      "user_id": 1,
-      "category": "🍕 Food & Dining",
-      "limit_amount": 345,
-      "month": "2026-08",
-      "created_at": "2026-08-25T08:52:54.942Z"
-    }
+    { "id": 1, "user_id": 1, "category": "Housing", "limit_amount": 20000, "month": "2026-08", "created_at": "2026-08-01T10:00:00.000Z" },
+    { "id": 2, "user_id": 1, "category": "Food & Dining", "limit_amount": 5000, "month": "2026-08", "created_at": "2026-08-01T10:00:00.000Z" },
+    { "id": 3, "user_id": 1, "category": "Groceries", "limit_amount": 7000, "month": "2026-08", "created_at": "2026-08-01T10:00:00.000Z" },
+    { "id": 4, "user_id": 1, "category": "Transport", "limit_amount": 4000, "month": "2026-08", "created_at": "2026-08-01T10:00:00.000Z" },
+    { "id": 5, "user_id": 1, "category": "Entertainment", "limit_amount": 6000, "month": "2026-08", "created_at": "2026-08-01T10:00:00.000Z" }
   ],
   "nextUserId": 2,
-  "nextTxId": 3,
-  "nextBudgetId": 2
+  "nextTxId": 21,
+  "nextBudgetId": 6
 }
