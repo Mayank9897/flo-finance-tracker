@@ -559,6 +559,8 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Space Grotesk', sans-serif; margin: 0; }
   padding-top: 8px;
   border-bottom: 1px solid var(--color-outline-variant);
   position: relative;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .flo-bar-group {
@@ -567,6 +569,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Space Grotesk', sans-serif; margin: 0; }
   align-items: center;
   gap: 3px;
   flex: 1;
+  min-width: 28px;
 }
 
 .flo-bar-pair {
@@ -618,6 +621,12 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Space Grotesk', sans-serif; margin: 0; }
 /* ─────────────────────────────────────────────────────────────
    TRANSACTION TABLE
 ───────────────────────────────────────────────────────────── */
+.flo-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .flo-table {
   width: 100%;
   border-collapse: collapse;
@@ -1446,35 +1455,55 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Space Grotesk', sans-serif; margin: 0; }
    RESPONSIVE
 ───────────────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
-  .flo-stats-grid { grid-template-columns: repeat(2, 1fr); }
-  .flo-charts-grid { grid-template-columns: 1fr; }
-  .flo-analytics-grid { grid-template-columns: 1fr; }
-  .flo-budgets-grid { grid-template-columns: repeat(2, 1fr); }
-}
+  .flo-app {
+    flex-direction: column;
+    height: 100dvh;
+    height: 100vh;
+    overflow: hidden;
+  }
 
-@media (max-width: 768px) {
-  .flo-sidebar { display: none; }
+  .flo-sidebar {
+    display: none;
+  }
+
   .flo-sidebar.mobile-open {
     display: flex;
     position: fixed;
     inset: 0 auto 0 0;
     z-index: 50;
     width: 280px;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
   }
-  .flo-scrim { display: block; }
-  .flo-mobile-header { display: flex; }
-  .flo-mobile-nav { display: block; }
+
+  .flo-scrim {
+    display: block;
+  }
+
+  .flo-mobile-header {
+    display: flex;
+    flex-shrink: 0;
+    width: 100%;
+  }
+
+  .flo-mobile-nav {
+    display: block;
+  }
+
+  .flo-main {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    overflow-y: auto;
+  }
 
   .flo-main-inner {
-    padding: 20px 16px 90px;
+    padding: 24px 20px 100px;
   }
 
-  .flo-page-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .flo-budgets-grid { grid-template-columns: 1fr; }
+  .flo-stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .flo-charts-grid { grid-template-columns: 1fr; }
+  .flo-analytics-grid { grid-template-columns: 1fr; }
+  .flo-budgets-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .flo-budget-summary-grid { grid-template-columns: 1fr; gap: 16px; }
   .flo-budget-summary-item + .flo-budget-summary-item {
     padding: 16px 0 0;
@@ -1482,14 +1511,61 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Space Grotesk', sans-serif; margin: 0; }
     border-top: 1px solid var(--color-outline-variant);
   }
 
-  .flo-table { min-width: 580px; }
-  .flo-table-wrap { overflow-x: auto; }
+  .flo-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
 
   .flo-form-row { grid-template-columns: 1fr; }
+  .flo-table { min-width: 540px; }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
+  .flo-main-inner {
+    padding: 16px 12px 100px;
+  }
+
   .flo-stats-grid { grid-template-columns: 1fr; }
+  .flo-budgets-grid { grid-template-columns: 1fr; }
+
   .flo-page-title { font-size: 22px; }
   .flo-stat-amount { font-size: 22px; }
+
+  .flo-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .flo-search {
+    max-width: 100%;
+    min-width: 100%;
+  }
+
+  .flo-filter-select {
+    width: 100%;
+  }
+
+  .flo-modal-backdrop {
+    padding: 12px;
+  }
+
+  .flo-modal {
+    width: 100%;
+    max-height: 90dvh;
+    display: flex;
+    flex-direction: column;
+    margin: auto;
+  }
+
+  .flo-modal-body {
+    overflow-y: auto;
+    max-height: 60vh;
+  }
+
+  .flo-input,
+  .flo-select {
+    font-size: 16px;
+  }
 }
